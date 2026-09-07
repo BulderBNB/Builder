@@ -249,8 +249,10 @@ img, svg { display: block; max-width: 100%; }
   filter: blur(10px);
   z-index: -1;
 }
-.mascot-svg {
-  width: 100%;
+.mascot-img {
+  display: block;
+  width: 78%;
+  margin: 0 auto;
   animation: float 4.5s ease-in-out infinite;
   filter: drop-shadow(0 25px 30px rgba(16,17,20,0.18));
 }
@@ -326,6 +328,43 @@ img, svg { display: block; max-width: 100%; }
 .story-icon { font-size: 2rem; margin-bottom: 14px; }
 .story-card h3 { font-size: 1.1rem; margin-bottom: 10px; }
 .story-card p { color: var(--text-muted); font-size: 0.95rem; margin: 0; }
+
+/* Proof gallery */
+.proof-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+  margin-top: 26px;
+}
+.proof-gallery figure {
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.proof-gallery img {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+.proof-gallery figcaption {
+  padding: 14px 18px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+/* Banner */
+.banner-frame {
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 50px;
+}
+.banner-frame img { width: 100%; display: block; }
 
 /* About */
 .about-grid {
@@ -445,7 +484,7 @@ img, svg { display: block; max-width: 100%; }
   .nav-x-link { display: block; }
 }
 @media (max-width: 560px) {
-  .story-grid, .steps, .token-grid { grid-template-columns: 1fr; }
+  .story-grid, .steps, .token-grid, .proof-gallery { grid-template-columns: 1fr; }
   .ca-box { padding: 10px 14px; }
   .ca-value { font-size: 0.72rem; }
 }
