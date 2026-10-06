@@ -332,10 +332,16 @@ img, svg { display: block; max-width: 100%; }
 /* Proof gallery */
 .proof-gallery {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 22px;
   margin-top: 26px;
   align-items: start;
+}
+.proof-gallery--single {
+  grid-template-columns: 1fr;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .proof-gallery figure {
   margin: 0;
@@ -476,6 +482,7 @@ img, svg { display: block; max-width: 100%; }
   .check-list li::before { position: static; margin-right: 8px; }
   .story-grid, .steps { grid-template-columns: repeat(2, 1fr); }
   .token-grid { grid-template-columns: repeat(2, 1fr); }
+  .proof-gallery:not(.proof-gallery--single) { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 760px) {
   .main-nav { display: none; }
