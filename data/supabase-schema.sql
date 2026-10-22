@@ -30,3 +30,9 @@ create policy "anyone can view approved profiles"
   using (status = 'approved');
 
 -- No update/delete policies for anon = both denied by default (RLS default-deny)
+
+-- RLS policies alone are not enough — Postgres also requires base table
+-- privileges granted to the "anon" role. Needed if "Automatically expose
+-- new tables" was unchecked during project setup (it also skips auto-grants).
+grant usage on schema public to anon;
+grant insert, select on public.people to anon;

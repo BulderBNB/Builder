@@ -13,7 +13,7 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <style>
@@ -27,30 +27,30 @@
   .step { padding: 28px 22px; }
   .step-num { width: 34px; height: 34px; border-radius: 50%; background: var(--gold-bright); color: #171205; display: flex; align-items: center; justify-content: center; font-weight: 800; margin-bottom: 14px; }
   .step h3 { font-size: 1.05rem; margin-bottom: 8px; }
-  .step p { color: var(--ink-muted); font-size: 0.92rem; margin: 0; }
+  .step p { color: var(--text-muted); font-size: 0.92rem; margin: 0; }
   @media (max-width: 980px) { .about-grid { grid-template-columns: 1fr; text-align: center; } .check-list { align-items: center; } .check-list li { padding-left: 0; } .check-list li::before { position: static; margin-right: 8px; } .steps { grid-template-columns: repeat(2,1fr); } }
   @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
-<div class="grain" aria-hidden="true"></div>
+<div class="texture" aria-hidden="true"></div>
 
 <header class="site-header">
   <div class="container header-inner">
     <a href="index.html" class="brand">
-      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18"><use href="#icon-bnb-diamond"/></svg></span>
+      <span class="brand-mark" aria-hidden="true">B</span>
       BUILDER
     </a>
     <nav class="main-nav" id="main-nav">
-      <a href="index.html">Home</a>
-      <a href="events.html">Events</a>
+      <a href="index.html">Map</a>
       <a href="directory.html">Directory</a>
-      <a href="story.html">The Story</a>
+      <a href="who-is-builder.html">Who is Builder</a>
+      <a href="freedom-of-money.html">Freedom of Money</a>
     </nav>
     <div class="header-actions">
       <a class="btn btn-coin" href="builder.html" style="color:var(--gold-bright); border-color:rgba(242,197,114,0.35);"><span>View </span>$BUILDER</a>
-      <a class="btn btn-gold btn-sm" href="join.html">Join the Map</a>
+      <a class="btn btn-crimson btn-sm" href="join.html">Get Stamped</a>
     </div>
     <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
@@ -61,8 +61,8 @@
 <main>
   <section class="page-hero" style="text-align:center; padding-bottom:20px;">
     <div class="container">
-      <p class="eyebrow" style="justify-content:center;">🟡 On BNB Chain for years</p>
-      <h1 style="margin:0 auto;">$BUILDER — <span class="accent">the coin.</span></h1>
+      <p class="eyebrow-stamp" style="justify-content:center;">🟡 On BNB Chain for years</p>
+      <h1 style="margin:0 auto;">$BUILDER — <span class="accent-gold">the coin.</span></h1>
       <p class="lead center">Not a new face. The identity of the users, now on-chain. Deployed on BNB Chain (BEP-20).</p>
 
       <div class="mascot-stage" style="margin-top:40px;">
@@ -95,7 +95,7 @@
           <img src="assets/fanart-breakthrough.jpg" alt="Builder mascot art breaking through a stone wall" class="about-fanart">
         </div>
         <div>
-          <p class="eyebrow">About $BUILDER</p>
+          <p class="eyebrow-stamp">About $BUILDER</p>
           <h2 style="font-size:clamp(1.8rem, 3vw, 2.3rem); margin-bottom:18px;">A meme coin built by builders, for builders</h2>
           <p class="lead">
             $BUILDER isn't trying to be complicated. It's a community-launched token on BNB Chain
@@ -120,7 +120,7 @@
   <section class="block">
     <div class="container">
       <div class="block-head center">
-        <p class="eyebrow" style="justify-content:center;">Tokenomics</p>
+        <p class="eyebrow-stamp" style="justify-content:center;">Tokenomics</p>
         <h2>Simple by design</h2>
         <p class="lead center">The contract is the source of truth — always verify on BscScan before you buy.</p>
       </div>
@@ -159,7 +159,7 @@
   <section class="block">
     <div class="container">
       <div class="block-head center">
-        <p class="eyebrow" style="justify-content:center;">Get In</p>
+        <p class="eyebrow-stamp" style="justify-content:center;">Get In</p>
         <h2>How to buy $BUILDER</h2>
       </div>
       <div class="steps">
@@ -196,22 +196,23 @@
     <div class="footer-grid">
       <div>
         <div class="footer-brand">
-          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18"><use href="#icon-bnb-diamond"/></svg></span>
+          <span class="brand-mark" aria-hidden="true">B</span>
           BUILDER
         </div>
-        <p style="color:var(--ink-muted); font-size:0.88rem; max-width:280px; line-height:1.6;">
-          BNB Chain's gathering place — find the builders, events, and community already around you.
+        <p style="color:var(--text-muted); font-size:0.88rem; max-width:280px; line-height:1.6;">
+          Builder on the Builder's Chain — devs, designers, creators, and meme coin people, united.
         </p>
       </div>
       <div class="footer-col">
         <h4>Explore</h4>
         <a href="events.html">Events</a>
         <a href="directory.html">Directory</a>
-        <a href="join.html">Join the Map</a>
+        <a href="join.html">Get Stamped</a>
       </div>
       <div class="footer-col">
         <h4>About</h4>
-        <a href="story.html">The Story</a>
+        <a href="who-is-builder.html">Who is Builder</a>
+        <a href="freedom-of-money.html">Freedom of Money</a>
         <a href="builder.html">$BUILDER Token</a>
         <a href="https://x.com/thebnbmascot" target="_blank" rel="noopener">X / Twitter</a>
       </div>
@@ -229,16 +230,6 @@
     </div>
   </div>
 </footer>
-
-<svg style="display:none">
-  <symbol id="icon-bnb-diamond" viewBox="0 0 32 32">
-    <polygon points="16,3 22,9 16,15 10,9" fill="#171205"/>
-    <polygon points="16,17 22,23 16,29 10,23" fill="#171205"/>
-    <polygon points="4,15 8,11 12,15 8,19" fill="#171205"/>
-    <polygon points="20,15 24,11 28,15 24,19" fill="#171205"/>
-    <polygon points="16,15.5 18.5,18 16,20.5 13.5,18" fill="#171205"/>
-  </symbol>
-</svg>
 
 <script src="script.js"></script>
 </body>

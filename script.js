@@ -119,6 +119,48 @@
     );
   }
 
+  // ---------- Events panel (home page sidebar) ----------
+  var eventsPanelList = document.getElementById('events-panel-list');
+  var eventsTabs = document.querySelectorAll('.events-tab[data-tab]');
+  if (eventsPanelList) {
+    fetch('data/events.json')
+      .then(function (r) { return r.json(); })
+      .then(function (events) {
+        function render(tab) {
+          var filtered = events.filter(function (ev) {
+            return tab === 'past' ? ev.status === 'past' : ev.status !== 'past';
+          });
+          if (!filtered.length) {
+            eventsPanelList.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem; padding:14px 0;">Nothing here yet.</p>';
+            return;
+          }
+          eventsPanelList.innerHTML = filtered.map(function (ev) {
+            var liveTag = ev.status === 'live' ? '<span class="event-row-live">LIVE</span>' : '';
+            var rowClass = ev.status === 'past' ? 'event-row past' : 'event-row';
+            return (
+              '<div class="' + rowClass + '">' +
+                '<div class="event-row-date mono">' + escapeHtml(ev.date.split(' ')[0]) + '</div>' +
+                '<div class="event-row-body">' +
+                  '<h4>' + escapeHtml(ev.title) + liveTag + '</h4>' +
+                  '<p class="event-row-loc">' + escapeHtml(ev.location) + '</p>' +
+                  '<a class="event-row-link" href="' + ev.ticketUrl + '" target="_blank" rel="noopener">' + escapeHtml(ev.ctaLabel) + ' →</a>' +
+                '</div>' +
+              '</div>'
+            );
+          }).join('');
+        }
+        render('upcoming');
+        eventsTabs.forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            eventsTabs.forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            render(tab.getAttribute('data-tab'));
+          });
+        });
+      })
+      .catch(function (err) { console.error('events panel failed to load', err); });
+  }
+
   // ---------- People directory ----------
   var peopleContainer = document.getElementById('people-list');
   if (peopleContainer) {
