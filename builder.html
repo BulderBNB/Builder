@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>$BUILDER Token — Builder</title>
+<meta name="description" content="$BUILDER — BNB Chain (BEP-20). Contract, tokenomics, and how to buy. 100% dividend token paying real BNB to holders.">
+<meta property="og:title" content="$BUILDER Token">
+<meta property="og:description" content="BNB Chain (BEP-20) meme coin paying real BNB dividends to holders.">
+<meta property="og:image" content="assets/bnb-chain-banner.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="assets/bnb-chain-banner.jpg">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .mascot-stage { position: relative; max-width: 380px; margin: 0 auto; }
+  .mascot-glow { position: absolute; inset: -15%; background: radial-gradient(circle, rgba(242,197,114,0.25), transparent 70%); filter: blur(10px); z-index: -1; }
+  .mascot-img { width: 100%; filter: drop-shadow(0 25px 30px rgba(0,0,0,0.5)); animation: float 4.5s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  .about-fanart { width: 100%; max-width: 420px; margin: 0 auto; display: block; border-radius: var(--radius); box-shadow: var(--shadow-lg); }
+  .about-grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 50px; align-items: center; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .step { padding: 28px 22px; }
+  .step-num { width: 34px; height: 34px; border-radius: 50%; background: var(--gold-bright); color: #171205; display: flex; align-items: center; justify-content: center; font-weight: 800; margin-bottom: 14px; }
+  .step h3 { font-size: 1.05rem; margin-bottom: 8px; }
+  .step p { color: var(--ink-muted); font-size: 0.92rem; margin: 0; }
+  @media (max-width: 980px) { .about-grid { grid-template-columns: 1fr; text-align: center; } .check-list { align-items: center; } .check-list li { padding-left: 0; } .check-list li::before { position: static; margin-right: 8px; } .steps { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18"><use href="#icon-bnb-diamond"/></svg></span>
+      BUILDER
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <a href="index.html">Home</a>
+      <a href="events.html">Events</a>
+      <a href="directory.html">Directory</a>
+      <a href="story.html">The Story</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-coin" href="builder.html" style="color:var(--gold-bright); border-color:rgba(242,197,114,0.35);"><span>View </span>$BUILDER</a>
+      <a class="btn btn-gold btn-sm" href="join.html">Join the Map</a>
+    </div>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="page-hero" style="text-align:center; padding-bottom:20px;">
+    <div class="container">
+      <p class="eyebrow" style="justify-content:center;">🟡 On BNB Chain for years</p>
+      <h1 style="margin:0 auto;">$BUILDER — <span class="accent">the coin.</span></h1>
+      <p class="lead center">Not a new face. The identity of the users, now on-chain. Deployed on BNB Chain (BEP-20).</p>
+
+      <div class="mascot-stage" style="margin-top:40px;">
+        <div class="mascot-glow" aria-hidden="true"></div>
+        <img class="mascot-img" src="assets/mascot.png" alt="Builder, the BNB Chain mascot, waving with a briefcase">
+      </div>
+
+      <div class="ca-box ca-box--center" style="margin-top:30px;">
+        <span class="ca-label">CONTRACT</span>
+        <code class="ca-value" id="ca-value">0x1b947cb610f3b39b3148b33e8eceded2d7997777</code>
+        <button class="ca-copy" id="ca-copy" type="button" aria-label="Copy contract address">
+          <span>Copy</span>
+        </button>
+      </div>
+
+      <div class="hero-actions" style="justify-content:center; display:flex; gap:16px; margin-top:28px; flex-wrap:wrap;">
+        <a class="btn btn-gold btn-lg" href="https://pancakeswap.finance/swap?outputCurrency=0x1b947cb610f3b39b3148b33e8eceded2d7997777" target="_blank" rel="noopener">Buy on PancakeSwap</a>
+        <a class="btn btn-ghost btn-lg" href="https://bscscan.com/address/0x1b947cb610f3b39b3148b33e8eceded2d7997777" target="_blank" rel="noopener">View on BscScan</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="banner-frame" style="border-radius:24px; overflow:hidden; margin-bottom:60px; box-shadow:var(--shadow-lg);">
+        <img src="assets/bnb-chain-banner.jpg" alt="BNB Chain — Build More Together, featuring the Builder mascot">
+      </div>
+      <div class="about-grid">
+        <div class="about-art">
+          <img src="assets/fanart-breakthrough.jpg" alt="Builder mascot art breaking through a stone wall" class="about-fanart">
+        </div>
+        <div>
+          <p class="eyebrow">About $BUILDER</p>
+          <h2 style="font-size:clamp(1.8rem, 3vw, 2.3rem); margin-bottom:18px;">A meme coin built by builders, for builders</h2>
+          <p class="lead">
+            $BUILDER isn't trying to be complicated. It's a community-launched token on BNB Chain
+            built around a mascot that's already part of the furniture — the only official sticker pack
+            on BNB Chain's Telegram, the face at every event, the identity a lot of builders already use.
+            No VC unlocks, no roadmap PDF — just a friendly gold coin in sneakers repping the
+            "Build More Together" energy of the whole ecosystem.
+          </p>
+          <ul class="check-list">
+            <li>Deployed on BNB Chain (BEP-20)</li>
+            <li>100% dividend token — sell tax converts to real BNB, paid straight to holders</li>
+            <li>Built on years of real BNB Chain community presence</li>
+            <li>The only official mascot sticker pack on BNB Chain's Telegram</li>
+            <li>Community-run, meme-first, no promises of riches</li>
+          </ul>
+          <a class="btn btn-ghost btn-sm" href="https://x.com/thebnbmascot" target="_blank" rel="noopener">Follow the mascot on X →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="block-head center">
+        <p class="eyebrow" style="justify-content:center;">Tokenomics</p>
+        <h2>Simple by design</h2>
+        <p class="lead center">The contract is the source of truth — always verify on BscScan before you buy.</p>
+      </div>
+      <div class="token-grid">
+        <div class="card token-card">
+          <div class="token-icon">⛓️</div>
+          <h3>Network</h3>
+          <p>BNB Chain (BEP-20)</p>
+        </div>
+        <div class="card token-card">
+          <div class="token-icon">🤝</div>
+          <h3>Ownership</h3>
+          <p>Community-driven, no team allocation promises</p>
+        </div>
+        <div class="card token-card">
+          <div class="token-icon">🔍</div>
+          <h3>Transparency</h3>
+          <p>Fully verifiable on-chain via BscScan</p>
+        </div>
+        <div class="card token-card">
+          <div class="token-icon">🎁</div>
+          <h3>Dividends</h3>
+          <p>1% sell tax, 100% converted to real BNB and paid straight to holders — no staking, no claiming</p>
+        </div>
+      </div>
+      <div class="ca-box ca-box--center">
+        <span class="ca-label">CONTRACT</span>
+        <code class="ca-value">0x1b947cb610f3b39b3148b33e8eceded2d7997777</code>
+        <button class="ca-copy" type="button" data-copy="0x1b947cb610f3b39b3148b33e8eceded2d7997777">
+          <span>Copy</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="block-head center">
+        <p class="eyebrow" style="justify-content:center;">Get In</p>
+        <h2>How to buy $BUILDER</h2>
+      </div>
+      <div class="steps">
+        <div class="card step">
+          <div class="step-num">1</div>
+          <h3>Get a wallet + BNB</h3>
+          <p>Install MetaMask or Trust Wallet, switch to BNB Smart Chain, and fund it with a bit of BNB.</p>
+        </div>
+        <div class="card step">
+          <div class="step-num">2</div>
+          <h3>Head to PancakeSwap</h3>
+          <p>Open PancakeSwap, connect your wallet, and paste the $BUILDER contract address below.</p>
+        </div>
+        <div class="card step">
+          <div class="step-num">3</div>
+          <h3>Verify the CA</h3>
+          <p><code>0x1b947...97777</code> — always double-check the full address against this page and BscScan.</p>
+        </div>
+        <div class="card step">
+          <div class="step-num">4</div>
+          <h3>Swap &amp; join the box gang</h3>
+          <p>Confirm your swap, then head to X and say gm to the rest of the builders.</p>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; margin-top:40px;">
+        <a class="btn btn-gold btn-lg" href="https://pancakeswap.finance/swap?outputCurrency=0x1b947cb610f3b39b3148b33e8eceded2d7997777" target="_blank" rel="noopener">Buy on PancakeSwap</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18"><use href="#icon-bnb-diamond"/></svg></span>
+          BUILDER
+        </div>
+        <p style="color:var(--ink-muted); font-size:0.88rem; max-width:280px; line-height:1.6;">
+          BNB Chain's gathering place — find the builders, events, and community already around you.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4>Explore</h4>
+        <a href="events.html">Events</a>
+        <a href="directory.html">Directory</a>
+        <a href="join.html">Join the Map</a>
+      </div>
+      <div class="footer-col">
+        <h4>About</h4>
+        <a href="story.html">The Story</a>
+        <a href="builder.html">$BUILDER Token</a>
+        <a href="https://x.com/thebnbmascot" target="_blank" rel="noopener">X / Twitter</a>
+      </div>
+      <div class="footer-col">
+        <h4>Token</h4>
+        <a href="https://bscscan.com/address/0x1b947cb610f3b39b3148b33e8eceded2d7997777" target="_blank" rel="noopener">BscScan</a>
+        <a href="https://pancakeswap.finance/swap?outputCurrency=0x1b947cb610f3b39b3148b33e8eceded2d7997777" target="_blank" rel="noopener">PancakeSwap</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="disclaimer">
+        $BUILDER is a community meme token with no intrinsic value or financial return expectation. Not affiliated with, endorsed by, or issued by BNB Chain, Binance, or any related entity. Nothing here is financial advice — always DYOR.
+      </p>
+      <p class="copyright">© 2026 Builder Community</p>
+    </div>
+  </div>
+</footer>
+
+<svg style="display:none">
+  <symbol id="icon-bnb-diamond" viewBox="0 0 32 32">
+    <polygon points="16,3 22,9 16,15 10,9" fill="#171205"/>
+    <polygon points="16,17 22,23 16,29 10,23" fill="#171205"/>
+    <polygon points="4,15 8,11 12,15 8,19" fill="#171205"/>
+    <polygon points="20,15 24,11 28,15 24,19" fill="#171205"/>
+    <polygon points="16,15.5 18.5,18 16,20.5 13.5,18" fill="#171205"/>
+  </symbol>
+</svg>
+
+<script src="script.js"></script>
+</body>
+</html>

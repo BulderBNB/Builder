@@ -1,0 +1,56 @@
+[
+  {
+    "title": "Binance Blockchain Week",
+    "date": "Nov 28–29, 2026",
+    "location": "Bangkok, Thailand",
+    "status": "upcoming",
+    "post": { "author": "BNB Chain", "text": "See you in Bangkok 🟡 builders, you know where to be." },
+    "ticketUrl": "https://www.binance.com/en/blockchain-week",
+    "ctaLabel": "Get tickets"
+  },
+  {
+    "title": "Blockchain Life",
+    "date": "Dec 1–2, 2026",
+    "location": "Dubai, UAE",
+    "status": "upcoming",
+    "post": { "author": "A builder", "text": "Who else is pulling up to Dubai for this one?" },
+    "ticketUrl": "https://blockchain-life.com/",
+    "ctaLabel": "Get tickets"
+  },
+  {
+    "title": "The Smart Money Era: Set and Earn",
+    "date": "Oct 1 – Nov 5, 2026 · Online",
+    "location": "Open worldwide",
+    "status": "live",
+    "post": { "author": "BNB Chain", "text": "Build an agent, earn merch. First 100 qualifying wallets get rewarded." },
+    "ticketUrl": "https://www.bnbchain.org/en/hackathons",
+    "ctaLabel": "Join the hackathon"
+  },
+  {
+    "title": "BNB Hack Local — Abu Dhabi",
+    "date": "Rolling 2026",
+    "location": "Abu Dhabi, UAE",
+    "status": "upcoming",
+    "post": { "author": "BNB Chain", "text": "Hack Local keeps moving. Next stop, Abu Dhabi." },
+    "ticketUrl": "https://www.bnbchain.org/en/hackathons",
+    "ctaLabel": "RSVP free"
+  },
+  {
+    "title": "BNB Chain Hackathon — Istanbul",
+    "date": "2026",
+    "location": "Istanbul, Türkiye",
+    "status": "upcoming",
+    "post": { "author": "BNB Chain", "text": "Builders in Türkiye, this one's for you." },
+    "ticketUrl": "https://luma.com/hackistanbul",
+    "ctaLabel": "RSVP free"
+  },
+  {
+    "title": "BNB Hack: Buenos Aires",
+    "date": "Devconnect Argentina 2026",
+    "location": "Buenos Aires, Argentina",
+    "status": "past",
+    "post": { "author": "BNB Chain", "text": "Demo Night wrapped. Huge turnout from the LATAM builder scene." },
+    "ticketUrl": "https://www.bnbchain.org/en/hackathons",
+    "ctaLabel": "See recap"
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Seoul",
+    "xpct": 85.27,
+    "ypct": 29.13,
+    "type": "builder"
+  },
+  {
+    "name": "BNB Day Tokyo",
+    "xpct": 88.79,
+    "ypct": 30.18,
+    "type": "event"
+  },
+  {
+    "name": "MVB9 Hong Kong",
+    "xpct": 81.71,
+    "ypct": 37.6,
+    "type": "event"
+  },
+  {
+    "name": "Kuala Lumpur",
+    "xpct": 78.25,
+    "ypct": 48.26,
+    "type": "builder"
+  },
+  {
+    "name": "Bengaluru",
+    "xpct": 71.55,
+    "ypct": 42.79,
+    "type": "builder"
+  },
+  {
+    "name": "Johor Bahru",
+    "xpct": 78.82,
+    "ypct": 49.17,
+    "type": "builder"
+  },
+  {
+    "name": "Blockchain Week Bangkok",
+    "xpct": 77.92,
+    "ypct": 42.36,
+    "type": "event"
+  },
+  {
+    "name": "Hack Local: Abu Dhabi",
+    "xpct": 65.1,
+    "ypct": 36.41,
+    "type": "event"
+  },
+  {
+    "name": "Dubai",
+    "xpct": 65.35,
+    "ypct": 36.0,
+    "type": "builder"
+  },
+  {
+    "name": "Hack: Buenos Aires",
+    "xpct": 33.78,
+    "ypct": 69.22,
+    "type": "event"
+  },
+  {
+    "name": "New York",
+    "xpct": 29.44,
+    "ypct": 27.38,
+    "type": "builder"
+  },
+  {
+    "name": "Hack: Istanbul",
+    "xpct": 58.05,
+    "ypct": 27.22,
+    "type": "event"
+  }
+]
