@@ -35,6 +35,8 @@
   .stamp { aspect-ratio: 1; }
   .stamp-city { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; line-height: 1.2; padding: 0 4px; }
   .stamp-code { font-size: 0.56rem; opacity: 0.65; margin-top: 2px; }
+  .passport-photo { border-radius: 4px; overflow: hidden; border: 1px solid rgba(26,23,20,0.18); }
+  .passport-photo img { width: 100%; height: auto; display: block; }
   .passport-foot { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(26,23,20,0.25); padding-top: 12px; }
   .passport-foot .mono { font-size: 0.62rem; opacity: 0.5; }
 
@@ -94,13 +96,8 @@
           </div>
           <div style="font-size:1.3rem;">🟡</div>
         </div>
-        <div class="stamp-grid">
-          <div class="stamp gold" style="transform:rotate(-6deg);"><div class="stamp-city">Seoul</div><div class="stamp-code">KR · 서울</div></div>
-          <div class="stamp crimson" style="transform:rotate(5deg);"><div class="stamp-city">Tokyo</div><div class="stamp-code">JP · 東京</div></div>
-          <div class="stamp gold" style="transform:rotate(3deg);"><div class="stamp-city">Hong Kong</div><div class="stamp-code">HK · MVB9</div></div>
-          <div class="stamp crimson" style="transform:rotate(-4deg);"><div class="stamp-city">Istanbul</div><div class="stamp-code">TR · Hack</div></div>
-          <div class="stamp gold" style="transform:rotate(-2deg);"><div class="stamp-city">Sofia</div><div class="stamp-code">BG · You</div></div>
-          <div class="stamp crimson" style="transform:rotate(6deg);"><div class="stamp-city">Bangkok</div><div class="stamp-code">TH · BBW</div></div>
+        <div class="passport-photo">
+          <img src="assets/hero-character.webp" alt="Builder mascot mid-swing with a hammer, ready to build">
         </div>
         <div class="passport-foot">
           <span class="mono">VALID WORLDWIDE</span>
