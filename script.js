@@ -1,4 +1,11 @@
 (function () {
+  // ---------- Supabase ----------
+  var SUPABASE_URL = 'https://gnxebzuzcjglldoevxik.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_yVBug-r9radcj-ntA5TCTQ_UKg35YBv';
+  var supabaseClient = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    : null;
+
   // ---------- Mobile nav ----------
   var navToggle = document.getElementById('nav-toggle');
   var mainNav = document.getElementById('main-nav');
@@ -115,10 +122,17 @@
   // ---------- People directory ----------
   var peopleContainer = document.getElementById('people-list');
   if (peopleContainer) {
-    fetch('data/people.json')
-      .then(function (r) { return r.json(); })
+    var loadPeople = supabaseClient
+      ? supabaseClient.from('people').select('*').eq('status', 'approved').order('created_at', { ascending: false })
+          .then(function (res) {
+            if (res.error) throw res.error;
+            return res.data;
+          })
+      : fetch('data/people.json').then(function (r) { return r.json(); });
+
+    loadPeople
       .then(function (people) {
-        if (!people.length) {
+        if (!people || !people.length) {
           peopleContainer.innerHTML =
             '<div class="empty-state">' +
               '<p class="empty-title">No one’s pinned yet.</p>' +
@@ -129,17 +143,32 @@
         }
         peopleContainer.innerHTML = people.map(renderPersonCard).join('');
       })
-      .catch(function (err) { console.error('people failed to load', err); });
+      .catch(function (err) {
+        console.error('people failed to load', err);
+        peopleContainer.innerHTML =
+          '<div class="empty-state">' +
+            '<p class="empty-title">Couldn’t load the directory.</p>' +
+            '<p class="empty-sub">Try refreshing in a bit.</p>' +
+          '</div>';
+      });
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
   }
 
   function renderPersonCard(p) {
     var initial = (p.handle || '?').replace('@', '').charAt(0).toUpperCase();
+    var roles = Array.isArray(p.roles) ? p.roles : (p.role ? [p.role] : []);
+    var roleTags = roles.map(function (r) { return '<span class="role-tag">' + escapeHtml(r) + '</span>'; }).join(' ');
     return (
       '<div class="card person-card">' +
-        '<div class="person-avatar">' + initial + '</div>' +
-        '<h4>' + p.handle + '</h4>' +
-        '<p class="person-loc">' + p.location + '</p>' +
-        '<span class="role-tag">' + p.role + '</span>' +
+        '<div class="person-avatar">' + escapeHtml(initial) + '</div>' +
+        '<h4>' + escapeHtml(p.handle) + '</h4>' +
+        '<p class="person-loc">' + escapeHtml(p.city || p.location) + '</p>' +
+        roleTags +
       '</div>'
     );
   }
@@ -153,27 +182,59 @@
         chip.classList.add('active');
         var filter = chip.getAttribute('data-filter');
         document.querySelectorAll('.person-card').forEach(function (card) {
-          var role = card.querySelector('.role-tag');
-          var match = filter === 'All' || (role && role.textContent === filter);
+          var roleTags = card.querySelectorAll('.role-tag');
+          var match = filter === 'All' || Array.prototype.some.call(roleTags, function (tag) {
+            return tag.textContent === filter;
+          });
           card.style.display = match ? '' : 'none';
         });
       });
     });
   }
 
-  // ---------- Join form (role multi-select display only, no backend yet) ----------
+  // ---------- Join form ----------
   var joinForm = document.getElementById('join-form');
   if (joinForm) {
     joinForm.addEventListener('submit', function (e) {
       e.preventDefault();
       var submitBtn = joinForm.querySelector('.form-submit');
       var original = submitBtn.textContent;
-      submitBtn.textContent = 'Coming soon — check back shortly';
+
+      var handle = document.getElementById('handle').value.trim();
+      var city = document.getElementById('city').value.trim();
+      var bio = document.getElementById('bio').value.trim();
+      var roles = Array.prototype.map.call(
+        joinForm.querySelectorAll('input[name="role"]:checked'),
+        function (el) { return el.value; }
+      );
+
+      if (!supabaseClient) {
+        submitBtn.textContent = 'Not connected — try again later';
+        submitBtn.disabled = true;
+        setTimeout(function () { submitBtn.textContent = original; submitBtn.disabled = false; }, 3000);
+        return;
+      }
+
+      submitBtn.textContent = 'Submitting…';
       submitBtn.disabled = true;
-      setTimeout(function () {
-        submitBtn.textContent = original;
-        submitBtn.disabled = false;
-      }, 3000);
+
+      supabaseClient.from('people').insert({
+        handle: handle,
+        city: city,
+        roles: roles,
+        bio: bio || null,
+        status: 'pending'
+      }).then(function (res) {
+        if (res.error) {
+          console.error('submit failed', res.error);
+          submitBtn.textContent = 'Something went wrong — try again';
+          setTimeout(function () { submitBtn.textContent = original; submitBtn.disabled = false; }, 3000);
+          return;
+        }
+        joinForm.reset();
+        submitBtn.textContent = 'Submitted — pending review ✓';
+        setTimeout(function () { submitBtn.textContent = original; submitBtn.disabled = false; }, 4000);
+      });
     });
   }
 })();
