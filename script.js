@@ -182,6 +182,7 @@
     var qOptionsEl = document.getElementById('quiz-options');
     var timerFillEl = document.getElementById('quiz-timer-fill');
     var ladderEl = document.getElementById('quiz-ladder');
+    var guaranteedEl = document.getElementById('quiz-guaranteed');
     var endStampEl = document.getElementById('quiz-end-stamp');
     var endTitleEl = document.getElementById('quiz-end-title');
     var endSubEl = document.getElementById('quiz-end-sub');
@@ -232,6 +233,7 @@
         );
       }
       if (ladderEl) ladderEl.innerHTML = rows.join('');
+      if (guaranteedEl) guaranteedEl.innerHTML = 'GUARANTEED: <span class="amt">' + bankedScore().toLocaleString() + '</span>';
     }
 
     function startGame() {
