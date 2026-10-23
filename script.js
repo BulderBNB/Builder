@@ -259,7 +259,7 @@
         qOptionsEl.innerHTML = q.options.map(function (opt, i) {
           return (
             '<button class="quiz-option" data-idx="' + i + '">' +
-              '<span class="quiz-option-letter">' + letters[i] + '</span>' +
+              '<span class="quiz-option-letter">' + letters[i] + ':</span>' +
               '<span>' + escapeHtml(opt) + '</span>' +
             '</button>'
           );
