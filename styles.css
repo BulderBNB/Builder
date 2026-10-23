@@ -59,6 +59,10 @@ img, svg { display: block; max-width: 100%; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* ============ TOP NOTICE ============ */
+.top-notice { background: #000; border-bottom: 1px solid var(--line); padding: 9px 0; }
+.top-notice .container { text-align: center; font-family: 'Space Mono', monospace; font-size: 0.72rem; letter-spacing: 0.01em; color: var(--text-faint); }
+
 /* ============ HEADER ============ */
 .site-header { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); background: rgba(13,12,10,0.82); border-bottom: 1px solid var(--line); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; gap: 20px; }
