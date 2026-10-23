@@ -1,0 +1,92 @@
+[
+  {
+    "category": "Crypto Basics",
+    "question": "What does \"DYOR\" stand for?",
+    "options": ["Do Your Own Research", "Definitely Your Own Risk", "Don't Yield On Returns", "Decentralize Your Online Rights"],
+    "correct": 0
+  },
+  {
+    "category": "Crypto Basics",
+    "question": "What is a \"seed phrase\" used for?",
+    "options": ["Mining new coins", "Recovering or accessing your wallet", "Paying gas fees", "Verifying your identity to an exchange"],
+    "correct": 1
+  },
+  {
+    "category": "BNB Chain",
+    "question": "What did \"BNB\" originally stand for when it launched?",
+    "options": ["Blockchain Native Bank", "Binance Coin", "Binary Node Builder", "Best New Bitcoin"],
+    "correct": 1
+  },
+  {
+    "category": "Safety",
+    "question": "What should you NEVER share with anyone, ever?",
+    "options": ["Your wallet address", "Your public ENS name", "Your seed phrase or private key", "Your favorite exchange"],
+    "correct": 2
+  },
+  {
+    "category": "Degen Glossary",
+    "question": "What does it mean to \"ape in\"?",
+    "options": ["Buy in fast, often without much research", "Sell everything in panic", "Stake tokens long-term", "Short a token"],
+    "correct": 0
+  },
+  {
+    "category": "Crypto Basics",
+    "question": "What is a \"gas fee\"?",
+    "options": ["A tax on crypto profits", "The cost to process a transaction on a blockchain", "A fee for creating a wallet", "The spread on a DEX trade"],
+    "correct": 1
+  },
+  {
+    "category": "BNB Chain",
+    "question": "What consensus mechanism does BNB Chain primarily use?",
+    "options": ["Proof of Work", "Proof of History", "Proof of Staked Authority (PoSA)", "Proof of Burn"],
+    "correct": 2
+  },
+  {
+    "category": "Safety",
+    "question": "Someone DMs you offering to \"double your BNB\" if you send coins first. This is:",
+    "options": ["A legitimate giveaway", "A classic scam — never send funds first", "Only risky on X, safe on Telegram", "Fine if the account has a checkmark"],
+    "correct": 1
+  },
+  {
+    "category": "Degen Glossary",
+    "question": "What's a \"rug pull\"?",
+    "options": ["A new token listing strategy", "A type of staking reward", "Devs abandon a project and drain its liquidity", "When a whale buys the dip"],
+    "correct": 2
+  },
+  {
+    "category": "Crypto Basics",
+    "question": "What is \"slippage\" in a DEX trade?",
+    "options": ["The fee paid to validators", "A tax on token transfers", "The time delay before a trade confirms", "The gap between expected and actual trade price from market movement"],
+    "correct": 3
+  },
+  {
+    "category": "BNB Chain",
+    "question": "Which exchange originally created BNB Chain?",
+    "options": ["Coinbase", "Kraken", "Binance", "OKX"],
+    "correct": 2
+  },
+  {
+    "category": "Safety",
+    "question": "What's the safest way to verify a token's contract address before buying?",
+    "options": ["Trust a link someone sent in a group chat", "Cross-check it against the project's official site and a block explorer", "Ask a random account to confirm", "Just check if the token name sounds right"],
+    "correct": 1
+  },
+  {
+    "category": "Degen Glossary",
+    "question": "What does \"WAGMI\" mean?",
+    "options": ["We're All Gonna Make It", "Wait And Get More Info", "Watch And Grab More Investments", "Whales Always Get More Income"],
+    "correct": 0
+  },
+  {
+    "category": "BNB Chain",
+    "question": "What happened in 2022 to bring Binance Chain and Binance Smart Chain together?",
+    "options": ["They merged into a single identity called BNB Chain", "Binance Smart Chain was shut down", "Binance Chain became Ethereum-compatible", "They split into three separate chains"],
+    "correct": 0
+  },
+  {
+    "category": "Crypto Basics",
+    "question": "What is \"impermanent loss\"?",
+    "options": ["A tax penalty for early withdrawal", "The cost of a failed transaction", "A loss that only counts if you sell", "Potential value lost by providing liquidity when pooled token prices diverge"],
+    "correct": 3
+  }
+]

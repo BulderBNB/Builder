@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Events — Builder</title>
-<meta name="description" content="Every BNB Chain hackathon, meetup, and the bigger crypto conferences worth the flight — with ticket links and what people are saying.">
+<title>Map &amp; Events — Builder</title>
+<meta name="description" content="Every BNB Chain hackathon, meetup, and the bigger crypto conferences worth the flight — plotted on a map, with ticket links and what people are saying.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,14 +24,14 @@
       BUILDER
     </a>
     <nav class="main-nav" id="main-nav">
-      <a href="index.html">Map</a>
-      <a href="directory.html">Directory</a>
+      <a href="index.html">Play</a>
+      <a href="events.html" class="active">Events</a>
       <a href="who-is-builder.html">Who is Builder</a>
       <a href="freedom-of-money.html">Freedom of Money</a>
     </nav>
     <div class="header-actions">
       <a class="btn btn-coin" href="builder.html"><span>View </span>$BUILDER</a>
-      <a class="btn btn-crimson btn-sm" href="join.html">Get Stamped</a>
+      <a class="btn btn-crimson btn-sm" href="index.html#leaderboard">Leaderboard</a>
     </div>
     <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
@@ -50,6 +50,40 @@
 
   <section class="block">
     <div class="container">
+      <div class="map-events-split">
+        <div class="map-panel">
+          <div class="map-canvas">
+            <img class="worldmap-bg" src="assets/world-map-dots.svg" alt="World map showing BNB Chain event locations" width="1040" height="480">
+            <div class="map-pins-layer" id="map-pins-layer"></div>
+          </div>
+          <div class="map-stats">
+            <div class="map-stat"><div class="num" id="stat-events">—</div><div class="label">Events Coming</div></div>
+            <div class="map-stat"><div class="num" id="stat-cities">—</div><div class="label">Cities</div></div>
+          </div>
+          <div class="legend">
+            <span><i class="dot crimson"></i> Events</span>
+          </div>
+        </div>
+
+        <div class="events-panel">
+          <div class="events-tabs">
+            <button class="events-tab active" data-tab="upcoming">Upcoming</button>
+            <button class="events-tab" data-tab="past">Previous</button>
+          </div>
+          <div id="events-panel-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="block-head">
+        <div>
+          <h2>All events</h2>
+          <p>The full list, with what people are saying about each one.</p>
+        </div>
+      </div>
       <div class="events-grid" id="events-list"></div>
     </div>
   </section>
@@ -74,14 +108,14 @@
           BUILDER
         </div>
         <p style="color:var(--text-muted); font-size:0.88rem; max-width:280px; line-height:1.6;">
-          Builder on the Builder's Chain — devs, designers, creators, and meme coin people, united.
+          Are you a real builder? Prove it — then go find the next event worth showing up to.
         </p>
       </div>
       <div class="footer-col">
         <h4>Explore</h4>
+        <a href="index.html">Play the Quiz</a>
         <a href="events.html">Events</a>
-        <a href="directory.html">Directory</a>
-        <a href="join.html">Get Stamped</a>
+        <a href="index.html#leaderboard">Leaderboard</a>
       </div>
       <div class="footer-col">
         <h4>About</h4>

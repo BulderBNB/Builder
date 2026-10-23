@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Builder — BNB Chain's Gathering Place</title>
-<meta name="description" content="Builder on the Builder's Chain. Find the devs, designers, creators, and meme coin people already around you — and every event worth showing up to.">
-<meta property="og:title" content="Builder — BNB Chain's Gathering Place">
-<meta property="og:description" content="Find the devs, designers, creators, and meme coin people already around you — and every event worth showing up to.">
+<title>Are You a Real Builder? — Builder</title>
+<meta name="description" content="Prove it. A timed crypto trivia game — BNB Chain, degen glossary, and safety questions. Climb the ladder, bank your score, and see if you make the leaderboard.">
+<meta property="og:title" content="Are You a Real Builder? — Prove it.">
+<meta property="og:description" content="A timed crypto trivia game. Crypto basics, BNB Chain, degen glossary, and safety questions. Climb the ladder and make the leaderboard.">
 <meta property="og:image" content="assets/bnb-chain-banner.jpg">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
@@ -18,33 +18,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<style>
-  .hero { position: relative; padding: 80px 0 0; }
-  .hero-top { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 50px; align-items: center; padding-bottom: 60px; }
-  .hero h1 { font-size: clamp(2.5rem, 4.6vw, 3.8rem); }
-  .hero-sub { margin-top: 22px; font-size: 1.06rem; max-width: 480px; }
-  .hero-actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
-
-  .passport-mini {
-    padding: 32px 28px; position: relative; transform: rotate(1.5deg);
-  }
-  .passport-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-  .passport-title { font-family: 'Space Mono', monospace; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.55; }
-  .passport-no { font-family: 'Space Mono', monospace; font-size: 0.66rem; opacity: 0.4; }
-  .stamp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .stamp { aspect-ratio: 1; }
-  .stamp-city { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; line-height: 1.2; padding: 0 4px; }
-  .stamp-code { font-size: 0.56rem; opacity: 0.65; margin-top: 2px; }
-  .passport-photo { border-radius: 4px; overflow: hidden; border: 1px solid rgba(26,23,20,0.18); }
-  .passport-photo img { width: 100%; height: auto; display: block; }
-  .passport-foot { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(26,23,20,0.25); padding-top: 12px; }
-  .passport-foot .mono { font-size: 0.62rem; opacity: 0.5; }
-
-  .marquee { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--bg-elevated); overflow: hidden; padding: 12px 0; }
-  .marquee-track { display: flex; gap: 24px; white-space: nowrap; width: max-content; font-weight: 700; font-size: 0.86rem; letter-spacing: 0.03em; font-family: 'Space Mono', monospace; color: var(--gold-bright); animation: marquee 24s linear infinite; }
-  .marquee-track span.c { color: var(--crimson-bright); }
-  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-</style>
 </head>
 <body>
 
@@ -58,14 +31,14 @@
       BUILDER
     </a>
     <nav class="main-nav" id="main-nav">
-      <a href="index.html" class="active">Map</a>
-      <a href="directory.html">Directory</a>
+      <a href="index.html" class="active">Play</a>
+      <a href="events.html">Events</a>
       <a href="who-is-builder.html">Who is Builder</a>
       <a href="freedom-of-money.html">Freedom of Money</a>
     </nav>
     <div class="header-actions">
       <a class="btn btn-coin" href="builder.html"><span>View </span>$BUILDER</a>
-      <a class="btn btn-crimson btn-sm" href="join.html">Get Stamped</a>
+      <a class="btn btn-crimson btn-sm" href="#leaderboard">Leaderboard</a>
     </div>
     <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
@@ -74,97 +47,86 @@
 </header>
 
 <main>
-  <section class="hero">
-    <div class="container hero-top">
-      <div>
-        <h1>Builder on the <span class="accent-gold">Builder's</span> Chain.</h1>
-        <p class="hero-sub">
-          BNB Chain's devs, designers, creators, and meme coin people — on one living map,
-          alongside every event worth showing up to.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-crimson btn-lg" href="join.html">Get Stamped →</a>
-          <a class="btn btn-outline btn-lg" href="who-is-builder.html">Who is Builder?</a>
-        </div>
-      </div>
-
-      <div class="passport-card passport-mini">
-        <div class="passport-header">
-          <div>
-            <div class="passport-title">Builder Passport</div>
-            <div class="passport-no mono">No. BNB-2026-00118</div>
-          </div>
-          <div style="font-size:1.3rem;">🟡</div>
-        </div>
-        <div class="passport-photo">
-          <img src="assets/hero-character.webp" alt="Builder mascot mid-swing with a hammer, ready to build">
-        </div>
-        <div class="passport-foot">
-          <span class="mono">VALID WORLDWIDE</span>
-          <span class="mono">BUILD MORE TOGETHER</span>
-        </div>
-      </div>
+  <section class="quiz-hero">
+    <div class="container">
+      <p class="eyebrow-stamp">Prove it</p>
+      <h1>Are you a real <span class="accent-gold">Builder?</span></h1>
+      <p class="lead" style="max-width:560px;">Crypto basics, BNB Chain history, degen glossary, and the safety questions that actually matter. Timed questions, a climbing ladder, no walking back once you answer. Get one wrong and it's over.</p>
     </div>
+  </section>
 
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee-track">
-        <span>BUILDER ON THE BUILDER'S CHAIN •</span><span class="c">ASIA × EUROPE •</span><span>FIND YOUR PEOPLE •</span>
-        <span class="c">EVERYONE IS A BUILDER •</span><span>BUILD MORE TOGETHER •</span>
-        <span>BUILDER ON THE BUILDER'S CHAIN •</span><span class="c">ASIA × EUROPE •</span><span>FIND YOUR PEOPLE •</span>
-        <span class="c">EVERYONE IS A BUILDER •</span><span>BUILD MORE TOGETHER •</span>
+  <section class="block" style="padding-top:0;">
+    <div class="container">
+      <div id="quiz-root">
+
+        <!-- START SCREEN -->
+        <div class="quiz-screen" id="quiz-start">
+          <div class="quiz-card quiz-start-card">
+            <div class="quiz-cat-pills">
+              <span class="quiz-cat-pill">Crypto Basics</span>
+              <span class="quiz-cat-pill">BNB Chain</span>
+              <span class="quiz-cat-pill">Degen Glossary</span>
+              <span class="quiz-cat-pill">Safety</span>
+            </div>
+            <h2>15 questions. 20 seconds each. One wrong answer ends it.</h2>
+            <p class="lead" style="margin-top:10px;">Checkpoints lock in your score at question 5 and question 10 — miss one after that and you fall back to your last safe stop, not zero. Get all 15 and you're a certified Builder.</p>
+            <button class="btn btn-crimson btn-lg" id="quiz-start-btn" style="margin-top:26px;">Start the Quiz →</button>
+          </div>
+        </div>
+
+        <!-- PLAY SCREEN -->
+        <div class="quiz-screen" id="quiz-play" style="display:none;">
+          <div class="quiz-stage">
+            <div class="quiz-card quiz-question-card">
+              <div class="quiz-meta-row">
+                <span class="quiz-q-num mono" id="quiz-q-num">Question 1 of 15</span>
+                <span class="quiz-cat-pill" id="quiz-q-cat">Category</span>
+              </div>
+              <div class="quiz-timer-track"><div class="quiz-timer-fill" id="quiz-timer-fill"></div></div>
+              <h2 class="quiz-question-text" id="quiz-question-text">Question text goes here</h2>
+              <div class="quiz-options" id="quiz-options"></div>
+            </div>
+            <aside class="quiz-ladder-card" aria-label="Score ladder">
+              <div class="quiz-ladder-title mono">LADDER</div>
+              <ol class="quiz-ladder" id="quiz-ladder"></ol>
+              <button class="btn btn-outline btn-sm" id="quiz-walk-btn" style="width:100%; justify-content:center; margin-top:16px;">Walk away with this score</button>
+            </aside>
+          </div>
+        </div>
+
+        <!-- END SCREEN -->
+        <div class="quiz-screen" id="quiz-end" style="display:none;">
+          <div class="quiz-card quiz-end-card">
+            <div class="stamp crimson" id="quiz-end-stamp" style="width:64px; height:64px; margin:0 auto 18px; font-size:1.3rem;">🟡</div>
+            <h2 id="quiz-end-title">Game over.</h2>
+            <p class="lead" id="quiz-end-sub" style="margin-top:8px;">You banked a score of —.</p>
+            <div class="quiz-final-score mono" id="quiz-end-score">0</div>
+            <form class="quiz-name-form" id="quiz-name-form">
+              <input type="text" id="quiz-name-input" maxlength="24" placeholder="Your handle, for the leaderboard" required>
+              <button type="submit" class="btn btn-crimson">Submit score</button>
+            </form>
+            <p class="form-hint" id="quiz-submit-status" style="text-align:center; margin-top:10px;"></p>
+            <button class="btn btn-outline" id="quiz-again-btn" style="margin-top:18px;">Play again</button>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 
-  <section class="block">
+  <section class="block" id="leaderboard">
     <div class="container">
-      <div class="block-head">
-        <div>
-          <h2>The map</h2>
-          <p>Every builder pinned. Every event, upcoming and past. One place to find your people.</p>
-        </div>
-        <a class="see-all" href="join.html">Pin yourself →</a>
+      <div class="block-head center">
+        <p class="eyebrow-stamp" style="justify-content:center;">Hall of Builders</p>
+        <h2>Leaderboard</h2>
+        <p>Top scores from everyone who's proved it.</p>
       </div>
-
-      <div class="map-events-split">
-        <div class="map-panel">
-          <div class="map-canvas">
-            <img class="worldmap-bg" src="assets/world-map-dots.svg" alt="World map showing BNB Chain builder and event locations" width="1040" height="480">
-            <div class="map-pins-layer" id="map-pins-layer"></div>
-          </div>
-          <div class="map-stats">
-            <div class="map-stat"><div class="num" id="stat-builders">—</div><div class="label">Builder Hubs</div></div>
-            <div class="map-stat"><div class="num" id="stat-events">—</div><div class="label">Events Coming</div></div>
-            <div class="map-stat"><div class="num" id="stat-cities">—</div><div class="label">Cities</div></div>
-          </div>
-          <div class="legend">
-            <span><i class="dot gold"></i> Builders</span>
-            <span><i class="dot crimson"></i> Events</span>
-          </div>
+      <div class="leaderboard-card">
+        <div class="leaderboard-row leaderboard-head mono">
+          <span>#</span><span>Handle</span><span>Score</span>
         </div>
-
-        <div class="events-panel">
-          <div class="events-tabs">
-            <button class="events-tab active" data-tab="upcoming">Upcoming</button>
-            <button class="events-tab" data-tab="past">Previous</button>
-          </div>
-          <div id="events-panel-list"></div>
-          <a class="see-all" href="events.html" style="display:block; margin-top:16px; text-align:center;">See all events →</a>
-        </div>
+        <div id="leaderboard-list"></div>
       </div>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="container">
-      <div class="block-head">
-        <div>
-          <h2>Who's building</h2>
-          <p>A dev to collab with. A fellow holder. Someone to grab a coffee with at the next event.</p>
-        </div>
-        <a class="see-all" href="directory.html">Browse the directory →</a>
-      </div>
-      <div class="people-grid" id="people-list"></div>
     </div>
   </section>
 </main>
@@ -178,14 +140,14 @@
           BUILDER
         </div>
         <p style="color:var(--text-muted); font-size:0.88rem; max-width:280px; line-height:1.6;">
-          Builder on the Builder's Chain — devs, designers, creators, and meme coin people, united.
+          Are you a real builder? Prove it — then go find the next event worth showing up to.
         </p>
       </div>
       <div class="footer-col">
         <h4>Explore</h4>
+        <a href="index.html">Play the Quiz</a>
         <a href="events.html">Events</a>
-        <a href="directory.html">Directory</a>
-        <a href="join.html">Get Stamped</a>
+        <a href="index.html#leaderboard">Leaderboard</a>
       </div>
       <div class="footer-col">
         <h4>About</h4>
@@ -202,7 +164,7 @@
     </div>
     <div class="footer-bottom">
       <p class="disclaimer">
-        $BUILDER is a community meme token with no intrinsic value or financial return expectation. Not affiliated with, endorsed by, or issued by BNB Chain, Binance, or any related entity. Nothing here is financial advice — always DYOR.
+        $BUILDER is a community meme token with no intrinsic value or financial return expectation. Not affiliated with, endorsed by, or issued by BNB Chain, Binance, or any related entity. Nothing here is financial advice — always DYOR. The quiz is for fun and has no cash prizes.
       </p>
       <p class="copyright">© 2026 Builder Community</p>
     </div>
