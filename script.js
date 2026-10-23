@@ -198,9 +198,26 @@
     var timerInterval = null;
     var timeLeft = TIME_PER_Q;
 
+    var previewEl = document.getElementById('quiz-preview');
     fetch('data/quiz-questions.json')
       .then(function (r) { return r.json(); })
-      .then(function (qs) { questions = qs; })
+      .then(function (qs) {
+        questions = qs;
+        if (previewEl) {
+          var cats = ['Crypto Basics', 'BNB Chain', 'Degen Glossary', 'Safety'];
+          var picks = cats.map(function (cat) {
+            return questions.filter(function (q) { return q.category === cat; })[0];
+          }).filter(Boolean);
+          previewEl.innerHTML = picks.map(function (q) {
+            return (
+              '<div class="quiz-preview-card">' +
+                '<span class="quiz-cat-pill">' + escapeHtml(q.category) + '</span>' +
+                '<p>' + escapeHtml(q.question) + '</p>' +
+              '</div>'
+            );
+          }).join('');
+        }
+      })
       .catch(function (err) { console.error('quiz questions failed to load', err); });
 
     function show(name) {
