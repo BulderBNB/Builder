@@ -41,20 +41,83 @@ there's no payout, this was accepted rather than engineered around (see `Builder
 NatSpec). Revisit if a payout model is ever added later — that would need real answer
 verification, not just a trusted call.
 
-## Not yet built
+## Status
 
-- **UI.** Flap Apps require the UI to be built with the `flap-vault-component-template` repo in
-  its standalone "Flap App v2" mode (`useFlapSdk`, declared `walletChains`/`walletContracts`, no
-  custom wallet logic). Need access to that template before this can be scaffolded — it's a
-  different toolchain from the static site in this repo.
-- **Testnet deployment.** Should deploy to BNB Chain Testnet and wire the UI against it before
-  submitting (`testnet.flap.sh`).
-- **Submission.** Flap's "Submit App" flow requires: Telegram, email, an app overview, and the
-  ZIP produced by `yarn app:package` — plus a refundable 600 USDT deposit (final audit fee is at
-  least 600 USDT, more if the audit covers additional contracts). This is a real payment, so it's
-  on you to trigger, not something I can do on your behalf.
+- Contract: drafted, compiles clean (`solc 0.8.24`).
+- Template: confirmed real and public — `github.com/flap-sh/flap-vault-component-template`,
+  branch `feat/mini-app-v2`. Scaffold command verified working
+  (`node scripts/app-scaffold.mjs from-degen-to-builder` ran successfully and produced a real
+  artifact ID).
+- UI source (`Component.tsx` / `manifest.json` / `i18n.json`): not yet written.
+- Not run from inside Claude's sandbox: `yarn install`, `app:check`, `app:e2e`, `app:package`.
+  That sandbox blocks executing scripts from an externally-cloned repo as a safety boundary —
+  it isn't something Claude can grant itself access to. **This final stretch has to run on a
+  real machine — yours, or any normal dev environment.** The runbook below is exactly how.
+
+## Runbook: from source to a submittable ZIP
+
+### Prerequisites
+
+- Node.js v22+ and Yarn (`corepack enable` gets you `yarn@1.22.22`, the version this repo pins).
+- A BNB Chain Testnet wallet (e.g. MetaMask, network added via `chainid.network` or BNB Chain's
+  own docs) funded with testnet BNB from a faucet (search "BNB testnet faucet" — several run
+  live at any time, so no fixed link here).
+
+### 1. Deploy `BuilderQuiz.sol` to BNB Chain Testnet
+
+Easiest path, no local tooling needed:
+
+1. Open [Remix IDE](https://remix.ethereum.org).
+2. Create `FlapSharedIndexerV1.sol` and `BuilderQuiz.sol`, paste in the contents from
+   `flap-app/contracts/` in this repo.
+3. Compile with the Solidity 0.8.24 compiler.
+4. Deploy tab → Environment: "Injected Provider" (MetaMask) → make sure MetaMask is on BNB Chain
+   Testnet → Deploy `BuilderQuiz`.
+5. Confirm the transaction, copy the deployed contract address. You'll need it for the manifest.
+
+### 2. Set up the template locally
+
+```bash
+git clone https://github.com/flap-sh/flap-vault-component-template
+cd flap-vault-component-template
+git checkout feat/mini-app-v2
+yarn install
+```
+
+### 3. Scaffold the app and drop in the real source
+
+```bash
+yarn app:scaffold from-degen-to-builder
+```
+
+This creates `src/vaults/from-degen-to-builder/` with placeholder `Component.tsx`,
+`manifest.json`, `VaultABI.ts`, `i18n.json`. Replace all four with the versions Claude writes
+(ask for them in this repo under `flap-app/app-source/` once the lesson content for the six
+modules is ready) — `manifest.json`'s `walletContracts` needs the testnet address from step 1.
+
+### 4. Run the real checks
+
+```bash
+yarn app:check from-degen-to-builder
+yarn playwright install chromium   # first run only
+yarn app:e2e from-degen-to-builder
+yarn app:package from-degen-to-builder
+yarn app:verify-package dist/from-degen-to-builder.zip
+```
+
+Fix whatever `app:check`/`app:e2e` flag (they return machine-readable JSON with `fixHint` —
+paste any failure back to Claude to fix the source) and re-run until all four pass clean.
+
+### 5. Submit
+
+On `flap.sh`, open the Submit App form:
+
+- Telegram, email, GitHub (optional)
+- App Overview — mention `BuilderQuiz.sol`, the testnet address, and that it needs an audit
+- Upload `dist/from-degen-to-builder.zip`
+- Pay the 600 USDT refundable deposit
 
 ## Next step
 
 Per Flap's own docs: "talk to us early." This README + `BuilderQuiz.sol` is the concrete
-artifact to bring to that conversation before investing in the UI build.
+artifact to bring to that conversation before finishing the UI build.
