@@ -7,11 +7,13 @@ import {FlapSharedIndexerV1} from "./FlapSharedIndexerV1.sol";
 /// @notice On-chain record of "Are You a Real Builder?" quiz results. No funds move through
 ///         this contract — it only records course completions, XP, and a public leaderboard
 ///         via the Flap Shared Indexer (FSI). There is no payout: XP is bragging rights only.
-/// @dev Trust model: a course result (correctAnswers / totalQuestions) is self-reported by the
-///      caller. The quiz content itself (questions, correct answers) lives off-chain in the
-///      Flap App UI, same as the public site's quiz. Since nothing of value is at stake, this
-///      contract does not attempt to cryptographically verify that a caller actually played —
-///      only that XP can't be farmed twice for the same course (see `courseCompleted`).
+/// @dev Trust model: a course result (correctAnswers / totalQuestions) must carry a signature
+///      from `signer` — the quiz backend's key — over (this contract, chain, caller, courseId,
+///      correctAnswers, totalQuestions). The backend only signs a result after actually grading
+///      that user's answers, so `completeCourse` can't be called directly with a fabricated
+///      score; the signature binds to `msg.sender`, so one person's result can't be replayed
+///      under another wallet. This is intentionally lightweight — there's no payout here, so
+///      the goal is "can't skip the quiz," not full Sybil-resistance across many wallets.
 contract BuilderQuiz is FlapSharedIndexerV1 {
     bytes32 constant NS_XP = "xp";           // Template A -> global leaderboard
     bytes32 constant NS_COURSE = "course";   // Template B -> per-course leaderboard (round = courseId)
@@ -28,6 +30,9 @@ contract BuilderQuiz is FlapSharedIndexerV1 {
 
     address public owner;
 
+    /// @notice The quiz backend's signing key. Only results it signed are accepted.
+    address public signer;
+
     /// @notice Lifetime XP per address. Source of truth for the global leaderboard.
     mapping(address => uint256) public xp;
 
@@ -41,6 +46,7 @@ contract BuilderQuiz is FlapSharedIndexerV1 {
     event XpPerCorrectAnswerUpdated(uint256 oldValue, uint256 newValue);
     event XpPerLevelUpdated(uint256 oldValue, uint256 newValue);
     event OwnerUpdated(address indexed oldOwner, address indexed newOwner);
+    event SignerUpdated(address indexed oldSigner, address indexed newSigner);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
@@ -49,19 +55,33 @@ contract BuilderQuiz is FlapSharedIndexerV1 {
 
     constructor() {
         owner = msg.sender;
+        signer = msg.sender;
     }
 
-    /// @notice Record a finished quiz run for `courseId`.
+    /// @notice Record a finished quiz run for `courseId`, as graded and signed by the backend.
     /// @dev XP is only credited the first time a user clears a given course, so repeat plays
     ///      (to practice, or to improve a score) never inflate the global leaderboard. The
     ///      per-course best score can still improve on replay. Every attempt — first or repeat
-    ///      — is logged to the FSI activity feed via Template G.
+    ///      — is logged to the FSI activity feed via Template G. No explicit replay guard is
+    ///      needed beyond this: the signed message is bound to `msg.sender`, and re-submitting
+    ///      one's own prior signature changes nothing (XP already credited, score already at
+    ///      its best), so it's a no-op, not an exploit.
     /// @param courseId Stable ID assigned by the UI (e.g. 1 = "Crypto Basics & Safety").
     /// @param correctAnswers Number of questions answered correctly this run.
     /// @param totalQuestions Total questions in this run. Must be > 0 and within the cap.
-    function completeCourse(uint256 courseId, uint256 correctAnswers, uint256 totalQuestions) external {
+    /// @param signature Backend signature over (this contract, chain id, caller, courseId,
+    ///        correctAnswers, totalQuestions) — see `resultHash`.
+    function completeCourse(
+        uint256 courseId,
+        uint256 correctAnswers,
+        uint256 totalQuestions,
+        bytes calldata signature
+    ) external {
         require(totalQuestions > 0 && totalQuestions <= MAX_QUESTIONS_PER_COURSE, "bad totalQuestions");
         require(correctAnswers <= totalQuestions, "correctAnswers > totalQuestions");
+
+        bytes32 hash = resultHash(msg.sender, courseId, correctAnswers, totalQuestions);
+        require(_recoverSigner(hash, signature) == signer, "invalid signature");
 
         uint256 scoreBps = (correctAnswers * 10_000) / totalQuestions;
         uint256 xpAwarded = 0;
@@ -87,6 +107,32 @@ contract BuilderQuiz is FlapSharedIndexerV1 {
         return xp[user] / xpPerLevel;
     }
 
+    /// @notice The exact message the backend must sign for a given result. Bound to this
+    ///         contract's address and the chain id so a signature can't be replayed against a
+    ///         redeployed contract or a different chain.
+    function resultHash(address user, uint256 courseId, uint256 correctAnswers, uint256 totalQuestions)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(address(this), block.chainid, user, courseId, correctAnswers, totalQuestions));
+    }
+
+    /// @dev Standard eth_sign-style ECDSA recovery, no external dependency.
+    function _recoverSigner(bytes32 hash, bytes calldata signature) private pure returns (address) {
+        require(signature.length == 65, "bad signature length");
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := calldataload(signature.offset)
+            s := calldataload(add(signature.offset, 32))
+            v := byte(0, calldataload(add(signature.offset, 64)))
+        }
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+        return ecrecover(ethSignedHash, v, r, s);
+    }
+
     // ---------------------------------------------------------------------
     // Owner-only tuning. No function here can move funds or alter past results —
     // only the forward-looking XP/level rates used by future completeCourse calls.
@@ -108,5 +154,12 @@ contract BuilderQuiz is FlapSharedIndexerV1 {
         require(newOwner != address(0), "zero address");
         emit OwnerUpdated(owner, newOwner);
         owner = newOwner;
+    }
+
+    /// @notice Rotate the backend signing key, e.g. if it's ever compromised or redeployed.
+    function setSigner(address newSigner) external onlyOwner {
+        require(newSigner != address(0), "zero address");
+        emit SignerUpdated(signer, newSigner);
+        signer = newSigner;
     }
 }

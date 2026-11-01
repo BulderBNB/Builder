@@ -17,12 +17,15 @@ transfer any token. This was a deliberate choice:
 
 ## Contract: `contracts/BuilderQuiz.sol`
 
-- `completeCourse(courseId, correctAnswers, totalQuestions)` — called once per finished quiz
-  run. Awards XP only the first time a user clears a given `courseId` (repeat plays can still
-  improve their best score, but never farm XP twice).
+- `completeCourse(courseId, correctAnswers, totalQuestions, signature)` — called once per
+  finished quiz run. Requires a signature from `signer` (the quiz backend's key) over the result;
+  without a valid signature the call reverts. Awards XP only the first time a user clears a given
+  `courseId` (repeat plays can still improve their best score, but never farm XP twice).
 - `levelOf(address)` — XP ÷ `xpPerLevel`, view-only convenience.
-- Owner can tune `xpPerCorrectAnswer` and `xpPerLevel` going forward. No function can move funds
-  or rewrite past results.
+- `resultHash(user, courseId, correctAnswers, totalQuestions)` — the exact message the backend
+  signs; bound to this contract's address and chain id so a signature can't be replayed elsewhere.
+- Owner can tune `xpPerCorrectAnswer`, `xpPerLevel`, and rotate `signer`. No function can move
+  funds or rewrite past results.
 
 ### FSI mapping
 
@@ -32,23 +35,39 @@ transfer any token. This was a deliberate choice:
 | Per-course leaderboard (best score, bps) | B | `course` | round = courseId, account = user |
 | Activity feed (every attempt, first or repeat) | G | `attempt` | id = courseId |
 
-### Known trade-off
+### Anti-farming design
 
-`completeCourse` trusts the caller's self-reported `correctAnswers`/`totalQuestions` — the quiz
-content (questions, correct answers) lives off-chain in the UI, same as the public site today.
-Someone could call the contract directly and self-report a perfect score without playing. Since
-there's no payout, this was accepted rather than engineered around (see `BuilderQuiz.sol`
-NatSpec). Revisit if a payout model is ever added later — that would need real answer
-verification, not just a trusted call.
+Raised directly by the Flap team: could `completeCourse` be called directly with a fake score, or
+spammed across throwaway wallets? The fix is a signature gate — the quiz backend grades the
+user's actual answers server-side and only then signs `resultHash(...)`; the contract rejects any
+call without a valid signature from `signer`. That closes the "skip the quiz, call the contract
+directly" exploit entirely.
+
+**This only holds if the backend actually grades before signing** — if the backend ever signs
+whatever `correctAnswers`/`totalQuestions` the client claims without checking them against the
+real quiz answers server-side, the gate is decorative. The question bank's correct answers must
+never ship to the client in a form the backend trusts back unchecked.
+
+What's intentionally *not* solved: Sybil (one person legitimately playing through many different
+wallets). Since there's no payout, this was a deliberate scope call, not an oversight — not worth
+engineering around for a bragging-rights leaderboard. Revisit with something like Flap's X
+verifier if a stronger "one real person, one leaderboard spot" guarantee is ever wanted.
 
 ## Status
 
-- Contract: drafted, compiles clean (`solc 0.8.24`).
+- Contract: drafted, compiles clean (`solc 0.8.24`), now signature-gated.
 - Template: confirmed real and public — `github.com/flap-sh/flap-vault-component-template`,
   branch `feat/mini-app-v2`. Scaffold command verified working
   (`node scripts/app-scaffold.mjs from-degen-to-builder` ran successfully and produced a real
   artifact ID).
 - UI source (`Component.tsx` / `manifest.json` / `i18n.json`): not yet written.
+- **New since the signature gate**: a small grading/signing backend is needed — something that
+  holds the `signer` private key, checks a submitted answer set against the real question bank,
+  and returns a signature only for a genuinely correct tally. None of Flap's listed shared
+  services (Trigger Service, AI Oracle, X Verifier, FlapVaultEx) cover "grade a quiz and sign the
+  result," so this is one small piece of infrastructure we run ourselves — a stateless function
+  (e.g. a Vercel/Cloudflare Worker endpoint), not a database or anything persistent. Not yet
+  built; needed before `app:e2e` can exercise a real `completeCourse` call.
 - Not run from inside Claude's sandbox: `yarn install`, `app:check`, `app:e2e`, `app:package`.
   That sandbox blocks executing scripts from an externally-cloned repo as a safety boundary —
   it isn't something Claude can grant itself access to. **This final stretch has to run on a
