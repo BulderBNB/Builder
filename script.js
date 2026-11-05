@@ -449,4 +449,65 @@
       });
   }
   loadLeaderboard();
+
+  // ---------- Bounties (browse list) ----------
+  var bountyContainer = document.getElementById('bounty-list');
+  if (bountyContainer) {
+    fetch('data/bounties.json')
+      .then(function (r) { return r.json(); })
+      .then(function (bounties) {
+        var open = bounties.filter(function (b) { return b.status === 'Open'; });
+        if (!open.length) {
+          bountyContainer.innerHTML =
+            '<div class="empty-state">' +
+              '<p class="empty-title">No bounties yet.</p>' +
+              '<p class="empty-sub">Be the first to post one.</p>' +
+            '</div>';
+          return;
+        }
+        bountyContainer.innerHTML = open.map(renderBountyCard).join('');
+      })
+      .catch(function (err) {
+        console.error('bounties failed to load', err);
+        bountyContainer.innerHTML =
+          '<div class="empty-state">' +
+            '<p class="empty-title">Couldn’t load bounties.</p>' +
+            '<p class="empty-sub">Try refreshing in a bit.</p>' +
+          '</div>';
+      });
+  }
+
+  function renderBountyCard(b) {
+    return (
+      '<div class="card bounty-card">' +
+        '<div class="bounty-top">' +
+          '<h3>' + escapeHtml(b.title) + '</h3>' +
+          '<span class="bounty-reward">' + escapeHtml(b.rewardLabel) + '</span>' +
+        '</div>' +
+        '<div class="bounty-meta">' +
+          '<span>' + escapeHtml(b.category) + '</span>' +
+          '<span>Due ' + escapeHtml(b.deadline) + '</span>' +
+        '</div>' +
+        (b.briefLink ? '<a class="event-row-link" href="' + b.briefLink + '" target="_blank" rel="noopener">View brief →</a>' : '') +
+      '</div>'
+    );
+  }
+
+  // ---------- Bounties (builder leaderboard) ----------
+  var builderLeaderboardList = document.getElementById('builder-leaderboard-list');
+  if (builderLeaderboardList) {
+    builderLeaderboardList.innerHTML =
+      '<div class="empty-state">' +
+        '<p class="empty-title">No builders ranked yet.</p>' +
+        '<p class="empty-sub">Complete a bounty to top the board.</p>' +
+      '</div>';
+  }
+
+  // ---------- Bounties (post form — on-chain not live yet) ----------
+  var bountyForm = document.getElementById('bounty-form');
+  if (bountyForm) {
+    bountyForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+    });
+  }
 })();
