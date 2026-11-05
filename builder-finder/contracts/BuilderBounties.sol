@@ -40,6 +40,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     uint256 public constant STRIKES_TO_AUTO_BLACKLIST = 3;
     uint256 public constant MAX_TITLE_LEN = 120;
     uint256 public constant MAX_LINK_LEN = 300;
+    uint256 public constant MAX_PROFILE_FIELD_LEN = 160;
 
     address public owner;
 
@@ -54,6 +55,12 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     mapping(address => uint256) public posterNonPaymentReports;
     mapping(address => bool) public posterBlacklisted;
 
+    /// @notice Self-reported, unverified — same trust tier as a bounty's own reward label.
+    ///         Not a guarantee of availability or rate, just a listing.
+    mapping(address => bool) public openForWork;
+    mapping(address => string) public rateLabel;   // free text, e.g. "0.3-1 BNB per gig"
+    mapping(address => string) public skillsLabel; // free text, e.g. "Dev, Solidity"
+
     event BountyPosted(uint256 indexed id, address indexed poster, string title);
     event BountyClaimed(uint256 indexed id, address indexed builder);
     event BountySubmitted(uint256 indexed id, address indexed builder, string proofLink);
@@ -64,6 +71,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     event BuilderBlacklistUpdated(address indexed builder, bool blacklisted);
     event PosterBlacklistUpdated(address indexed poster, bool blacklisted);
     event OwnerUpdated(address indexed oldOwner, address indexed newOwner);
+    event ProfileUpdated(address indexed builder, bool openForWork, string rateLabel, string skillsLabel);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "not owner");
@@ -212,6 +220,23 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         posterNonPaymentReports[b.poster] += 1;
         _fsiLog(NS_ACTIVITY, id, msg.sender, b.poster, 0, 1); // extra = 1 marks "non-payment report"
         emit NonPaymentReported(id, b.poster, msg.sender);
+    }
+
+    // ---------------------------------------------------------------------
+    // Builder profile — forward-looking info (availability, rate, skills) that can't be derived
+    // from past bounty history, so it needs its own storage. Self-set, unverified, same trust
+    // tier as a bounty's own reward label: a listing, not a guarantee.
+    // ---------------------------------------------------------------------
+
+    function setBuilderProfile(bool available, string calldata rate, string calldata skills) external {
+        require(bytes(rate).length <= MAX_PROFILE_FIELD_LEN, "rate too long");
+        require(bytes(skills).length <= MAX_PROFILE_FIELD_LEN, "skills too long");
+
+        openForWork[msg.sender] = available;
+        rateLabel[msg.sender] = rate;
+        skillsLabel[msg.sender] = skills;
+
+        emit ProfileUpdated(msg.sender, available, rate, skills);
     }
 
     // ---------------------------------------------------------------------

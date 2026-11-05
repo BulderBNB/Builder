@@ -207,6 +207,18 @@ code { font-family: 'Space Mono', monospace; }
 .leaderboard-rank.gold { color: var(--gold-bright); }
 .leaderboard-row span:last-child { text-align: right; color: var(--gold-bright); font-weight: 700; }
 .leaderboard-head span:last-child { color: var(--text-faint); font-weight: 400; }
+.leaderboard-row a { color: var(--gold-bright); }
+
+.mini-addr { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--text-faint); margin-top: 4px; }
+.mini-addr a { color: var(--gold-bright); }
+
+.lookup-bar { display: flex; gap: 10px; max-width: 520px; margin: 0 auto 28px; flex-wrap: wrap; }
+.lookup-bar input {
+  flex: 1; min-width: 200px; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03); color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.84rem;
+}
+.lookup-bar input::placeholder { color: var(--text-faint); }
+.lookup-bar input:focus { outline: none; border-color: var(--gold-bright); }
 
 /* ---------- Footer ---------- */
 .site-footer { border-top: 1px solid var(--line); padding: 50px 0 30px; }

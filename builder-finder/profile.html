@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder Finder — profile</title>
+<meta name="description" content="On-chain history and reputation for a Builder Finder wallet.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .profile-header {
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 36px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1.1rem; color: var(--ink);
+  }
+  .profile-id { flex: 1; min-width: 220px; }
+  .profile-addr-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .profile-addr { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; }
+  .copy-btn {
+    font-family: 'Space Mono', monospace; font-size: 0.68rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--text-muted); background: transparent; cursor: pointer;
+  }
+  .copy-btn:hover { border-color: var(--gold-bright); color: var(--gold-bright); }
+  .profile-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .badge {
+    font-family: 'Space Mono', monospace; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 5px; border: 1.5px solid currentColor;
+  }
+  .badge.open { color: var(--gold-bright); }
+  .badge.blacklist { color: var(--crimson-bright); }
+  .profile-meta { color: var(--text-muted); font-size: 0.86rem; margin-top: 10px; }
+  .profile-meta strong { color: var(--text); }
+
+  .lookup-bar { display: flex; gap: 10px; margin: 24px 0; flex-wrap: wrap; }
+  .lookup-bar input {
+    flex: 1; min-width: 220px; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--line);
+    background: rgba(255,255,255,0.03); color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.86rem;
+  }
+  .lookup-bar input::placeholder { color: var(--text-faint); }
+  .lookup-bar input:focus { outline: none; border-color: var(--gold-bright); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 28px 0; }
+  .stat-tile { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-tile-label { display: block; font-family: 'Space Mono', monospace; font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+  .stat-tile-val { font-family: 'Clash Display', sans-serif; font-weight: 700; font-size: 1.25rem; color: var(--gold-bright); }
+  .stat-tile-val.bad { color: var(--crimson-bright); }
+
+  .section-title { font-size: 1.1rem; margin: 40px 0 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title .count { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--text-faint); font-weight: 400; }
+
+  .mini-addr { font-family: 'Space Mono', monospace; font-size: 0.74rem; color: var(--text-muted); }
+  .mini-addr a { color: var(--gold-bright); }
+
+  @media (max-width: 980px) { .stat-grid { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 560px) { .stat-grid { grid-template-columns: 1fr; } .profile-header { flex-direction: column; align-items: flex-start; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark" aria-hidden="true">B</span>
+      BUILDER FINDER
+    </a>
+    <a class="back-link" href="index.html#post">
+      Post a Bounty →
+    </a>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <div class="lookup-bar">
+      <input type="text" id="lookup-input" placeholder="Paste a wallet address to look up (0x...)">
+      <button class="btn btn-crimson" id="lookup-btn">View Profile</button>
+    </div>
+
+    <div id="profile-empty" class="empty-state" hidden>
+      <p class="empty-title">No address given.</p>
+      <p class="empty-sub">Paste a wallet address above, or click one from a bounty row or the leaderboard.</p>
+    </div>
+
+    <div id="profile-content" hidden>
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar">?</div>
+        <div class="profile-id">
+          <div class="profile-addr-row">
+            <span class="profile-addr" id="profile-addr">0x0000...0000</span>
+            <button class="copy-btn" id="copy-addr-btn">Copy</button>
+          </div>
+          <div class="profile-badges" id="profile-badges"></div>
+          <p class="profile-meta" id="profile-meta">No profile set yet — availability and rate are self-reported.</p>
+        </div>
+        <div>
+          <a class="btn btn-outline btn-sm" id="edit-profile-toggle">Edit Profile</a>
+        </div>
+      </div>
+
+      <form class="form-card" id="edit-profile-form" style="margin-top:24px;" hidden>
+        <div class="form-group">
+          <label>Open for work?</label>
+          <div class="role-select">
+            <div class="role-option"><input type="radio" id="avail-yes" name="available" value="yes"><label for="avail-yes">Yes</label></div>
+            <div class="role-option"><input type="radio" id="avail-no" name="available" value="no" checked><label for="avail-no">No</label></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="rate-input">Rate</label>
+          <input type="text" id="rate-input" placeholder="e.g. 0.3-1 BNB per gig">
+        </div>
+        <div class="form-group">
+          <label for="skills-input">Skills</label>
+          <input type="text" id="skills-input" placeholder="e.g. Dev, Solidity, Design">
+        </div>
+        <button type="submit" class="btn btn-crimson form-submit">Connect Wallet to Save</button>
+        <p class="pre-launch-note">Profiles save on-chain once <code class="mono">BuilderBounties.sol</code> is live. This is a preview of the form.</p>
+      </form>
+
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-tile-label">Points</span>
+          <span class="stat-tile-val" id="stat-points">0</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile-label">Completed (as Builder)</span>
+          <span class="stat-tile-val" id="stat-completed">0</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile-label">Posted (as Poster)</span>
+          <span class="stat-tile-val" id="stat-posted">0</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile-label">Strikes / Reports</span>
+          <span class="stat-tile-val" id="stat-strikes">0</span>
+        </div>
+      </div>
+
+      <h2 class="section-title">As a Builder <span class="count" id="builder-count"></span></h2>
+      <div class="bounty-rows" id="as-builder-list"></div>
+
+      <h2 class="section-title">As a Poster <span class="count" id="poster-count"></span></h2>
+      <div class="bounty-rows" id="as-poster-list"></div>
+    </div>
+  </div>
+  <div style="height:60px;"></div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        BUILDER FINDER
+      </div>
+      <div class="footer-links">
+        <a href="https://discord.gg/xsQrp3eCx" target="_blank" rel="noopener">Discord</a>
+        <a href="https://x.com/thebnbmascot" target="_blank" rel="noopener">X / Twitter</a>
+        <a href="index.html#browse">Browse Bounties</a>
+        <a href="index.html#leaderboard">Hall of Builders</a>
+      </div>
+    </div>
+    <p class="disclaimer">
+      Builder Finder is an independent, community-run project — not affiliated with, endorsed by, or sponsored by BNB Chain or Binance. Bounties are posted and claimed on-chain; payment and communication happen off-platform and are not verified or guaranteed by Builder Finder.
+    </p>
+    <p class="copyright">© 2026 Builder Finder</p>
+  </div>
+</footer>
+
+<script src="profile.js"></script>
+</body>
+</html>
