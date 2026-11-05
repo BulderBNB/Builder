@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Builder Finder — post a gig, find a builder, get it done</title>
+<meta name="description" content="Post a gig, find a builder, get it done. Payment and chat happen off-platform — this is just where the work and the reputation live.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark" aria-hidden="true">B</span>
+      BUILDER FINDER
+    </a>
+    <a class="back-link" href="#post">
+      Post a Bounty →
+    </a>
+  </div>
+</header>
+
+<main>
+  <section class="bounty-app">
+    <div class="container">
+      <div class="app-topbar">
+        <div class="app-id">
+          <div class="app-mascot-frame"><img src="assets/mascot.png" alt="Builder mascot"></div>
+          <div>
+            <p class="app-kicker">BNB Chain · On-Chain Reputation</p>
+            <h1 class="app-title">Find the <span class="accent-gold">builder.</span><br>Get it <span class="accent-crimson">done.</span></h1>
+          </div>
+        </div>
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <a class="btn btn-crimson btn-lg" href="#post">+ Post a Bounty</a>
+          <a class="btn btn-outline btn-lg" href="#leaderboard">Hall of Builders</a>
+        </div>
+      </div>
+
+      <div class="app-stats">
+        <div class="app-stat">
+          <span class="app-stat-label">Open Bounties</span>
+          <span class="app-stat-val" id="stat-open">—</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">Builders Active</span>
+          <span class="app-stat-val" id="stat-builders">—</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">Completed All-Time</span>
+          <span class="app-stat-val" id="stat-completed">—</span>
+        </div>
+        <div class="app-stat highlight">
+          <span class="app-stat-label">Payment &amp; Chat</span>
+          <span class="app-stat-val">Off-platform</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="browse" style="padding-top:50px;">
+    <div class="container">
+      <div class="browse-head">
+        <div class="browse-filters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="open">Open</button>
+          <button class="chip" data-filter="claimed">Claimed</button>
+          <button class="chip" data-filter="completed">Completed</button>
+        </div>
+        <div class="browse-tools">
+          <div class="browse-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="bounty-search" placeholder="Search title or category...">
+          </div>
+        </div>
+      </div>
+      <div class="bounty-rows" id="bounty-list"></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="block-head center">
+        <p class="eyebrow-stamp" style="justify-content:center;">How it works</p>
+        <h2>Five steps, nothing held in escrow.</h2>
+        <p>Payment and chat happen off-platform — X, Telegram, a direct transfer. This is where the work gets posted, claimed, and remembered.</p>
+      </div>
+      <div class="how-steps">
+        <div class="card how-step">
+          <div class="how-step-num">1</div>
+          <h3>Post</h3>
+          <p>Title, what you need, the reward, a deadline.</p>
+        </div>
+        <div class="card how-step">
+          <div class="how-step-num">2</div>
+          <h3>Claim</h3>
+          <p>A builder claims it. Contact details swap off-platform from here.</p>
+        </div>
+        <div class="card how-step">
+          <div class="how-step-num">3</div>
+          <h3>Do the work</h3>
+          <p>Wherever it naturally lives — GitHub, X, Figma, wherever.</p>
+        </div>
+        <div class="card how-step">
+          <div class="how-step-num">4</div>
+          <h3>Submit proof</h3>
+          <p>A link to the finished work, not a file upload.</p>
+        </div>
+        <div class="card how-step">
+          <div class="how-step-num">5</div>
+          <h3>Confirm &amp; pay</h3>
+          <p>Both sides confirm the job's done in the Builder Discord, then you approve on-chain and pay off-platform. That's when points bank.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="block-head center">
+        <p class="eyebrow-stamp" style="justify-content:center;">The rules</p>
+        <h2>What keeps this honest</h2>
+      </div>
+      <div class="rules-grid">
+        <div class="card rule-card">
+          <div class="rule-icon">⏱️</div>
+          <h3>Miss a deadline, take a strike</h3>
+          <p>Automatic, not a judgment call — the chain just checks the clock. Three strikes and a builder can't claim new bounties.</p>
+        </div>
+        <div class="card rule-card">
+          <div class="rule-icon">⚖️</div>
+          <h3>Non-payment is reviewed, not automatic</h3>
+          <p>We can't see money move off-platform, so a report is a claim, not proof. It's logged publicly, but blacklisting a poster is a human call, never a single accusation.</p>
+        </div>
+        <div class="card rule-card">
+          <div class="rule-icon">🏆</div>
+          <h3>Top builders get highlighted</h3>
+          <p>The best track records get featured on X — the real incentive here isn't just points, it's getting seen.</p>
+        </div>
+        <div class="card rule-card">
+          <div class="rule-icon">✅</div>
+          <h3>Points need both sides to say so</h3>
+          <p>Approval isn't a poster clicking a button alone — poster and builder both confirm the job's done in the Builder Discord first. Public, so it can't be quietly faked between two wallets.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="post">
+    <div class="container">
+      <div class="block-head center">
+        <p class="eyebrow-stamp" style="justify-content:center;">Post a bounty</p>
+        <h2>Need something built?</h2>
+        <p>Posting is on-chain once the contract is live — wallet connects, no account to make.</p>
+      </div>
+      <form class="form-card" id="bounty-form">
+        <div class="form-group">
+          <label for="bounty-title">Title</label>
+          <input type="text" id="bounty-title" placeholder="e.g. Design a banner for the Bangkok meetup" required>
+        </div>
+        <div class="form-group">
+          <label for="bounty-brief">Brief link</label>
+          <input type="text" id="bounty-brief" placeholder="Link to the full brief — X post, doc, wherever">
+        </div>
+        <div class="form-group">
+          <label for="bounty-reward">Reward</label>
+          <input type="text" id="bounty-reward" placeholder="e.g. 0.5 BNB" required>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <div class="role-select">
+            <div class="role-option"><input type="radio" id="cat-dev" name="category" value="Dev"><label for="cat-dev">Dev</label></div>
+            <div class="role-option"><input type="radio" id="cat-design" name="category" value="Design"><label for="cat-design">Design</label></div>
+            <div class="role-option"><input type="radio" id="cat-content" name="category" value="Content"><label for="cat-content">Content</label></div>
+            <div class="role-option"><input type="radio" id="cat-community" name="category" value="Community"><label for="cat-community">Community</label></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="bounty-deadline">Deadline</label>
+          <input type="date" id="bounty-deadline" required>
+        </div>
+        <button type="submit" class="btn btn-crimson form-submit">Connect Wallet to Post</button>
+        <p class="pre-launch-note">Posting opens once <code class="mono">BuilderBounties.sol</code> is live on-chain. Check back soon.</p>
+      </form>
+    </div>
+  </section>
+
+  <section class="block" id="leaderboard">
+    <div class="container">
+      <div class="block-head center">
+        <p class="eyebrow-stamp" style="justify-content:center;">Hall of Builders</p>
+        <h2>Top builders</h2>
+        <p>Ranked by bounties completed. Nobody's claimed the top spot yet.</p>
+      </div>
+      <div class="leaderboard-card">
+        <div class="leaderboard-row leaderboard-head mono">
+          <span>#</span><span>Builder</span><span>Completed</span>
+        </div>
+        <div id="builder-leaderboard-list"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        BUILDER FINDER
+      </div>
+      <div class="footer-links">
+        <a href="https://x.com/thebnbmascot" target="_blank" rel="noopener">X / Twitter</a>
+        <a href="#browse">Browse Bounties</a>
+        <a href="#post">Post a Bounty</a>
+        <a href="#leaderboard">Hall of Builders</a>
+      </div>
+    </div>
+    <p class="disclaimer">
+      Builder Finder is an independent, community-run project — not affiliated with, endorsed by, or sponsored by BNB Chain or Binance. Bounties are posted and claimed on-chain; payment and communication happen off-platform and are not verified or guaranteed by Builder Finder.
+    </p>
+    <p class="copyright">© 2026 Builder Finder</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
