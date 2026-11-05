@@ -42,16 +42,28 @@ bounty row, the leaderboard, or by pasting a wallet into the lookup widget.
 
 ## What exists right now
 
-- `index.html` / `styles.css` / `script.js` — a full static preview of the product: live stat
-  strip (open bounties / active builders / completed all-time), filter pills, search, dense
-  bounty rows (with poster/claimer links into profiles), post form, a leaderboard computed from
-  real bounty history. This is a **design/demo site**, not yet a Flap App.
-- `profile.html` / `profile.js` — per-wallet profile page, see above.
-- `contracts/BuilderBounties.sol` — compiles clean (`solc 0.8.24`). Not deployed anywhere yet.
+- `index.html` / `styles.css` / `script.js` — live stat strip (open bounties / active builders /
+  completed all-time), filter pills, search, dense bounty rows (with poster/claimer links into
+  profiles and real Claim / Submit Proof / Approve / Report Non-Payment action buttons), a post
+  form, and a leaderboard — all backed by **real wallet-connect and contract calls** (`web3.js`,
+  ethers.js), not stubs.
+- `profile.html` / `profile.js` — per-wallet profile page, see above, same real wiring: the edit
+  form actually calls `setBuilderProfile`.
+- `web3.js` — wallet connect (`window.ethereum`) + every contract read/write. `CONFIG.CONTRACT_ADDRESS`
+  is empty until the contract is actually deployed; until then every read falls back to
+  `data/*.json` and every write button reads "Connect Wallet to Post" exactly as before — flipping
+  that one constant after deployment is the only step left to go live, no other code changes.
+- `contracts/BuilderBounties.sol` — compiles clean (`solc 0.8.24`). Not deployed to a public
+  network yet.
 - `contracts/FlapSharedIndexerV1.sol` — vendored verbatim from Flap's FSI spec (same base used
   by `BuilderQuiz.sol`).
-- `data/bounties.json` — empty array. Honest empty state, no fabricated example bounties.
-- `data/profiles.json` — empty object. Same.
+- `chain-test/` — local Hardhat-chain integration test harness. Proved the entire lifecycle (post,
+  claim, submit proof, approve, non-payment report, profile set, deadline auto-strike,
+  auto-blacklist at 3 strikes, owner moderation) against a real EVM, and separately drove the
+  actual UI through Playwright with a simulated signing wallet — connect, post, claim, submit
+  proof, approve, report, edit profile, all real signed transactions, all state verified on-chain.
+  See `chain-test/README.md`.
+- `data/bounties.json` / `data/profiles.json` — empty, used only as the pre-deployment fallback.
 - `DISCORD_PLAN.md` — the Discord server plan (channels, roles, pinned copy). Live server:
   https://discord.gg/xsQrp3eCx
 
@@ -63,12 +75,13 @@ Flap Apps are a `Component.tsx` built inside their `flap-vault-component-templat
 - No `manifest.json` / `i18n.json` / `VaultABI.ts`.
 - No port of this UI into `Component.tsx` using Flap's controlled image/media components
   (this preview uses plain `<img>`).
-- No wallet integration — "Connect Wallet to Post" is currently a no-op. Flap requires
-  `useFlapSdk` only, never raw ethers/web3.
-- Data here comes from a static JSON file. A real Flap App would read live bounty/leaderboard
-  state off `BuilderBounties.sol`'s events via the **FSI query endpoint**, not a static file.
-- `BuilderBounties.sol` isn't deployed to testnet yet (same step `BuilderQuiz.sol` needed via
-  Remix before a `manifest.json` could reference a real `walletContracts` address).
+- `web3.js` uses raw ethers.js against `window.ethereum`. Flap requires `useFlapSdk` only — this
+  needs re-wiring onto their SDK when the port happens, even though the logic itself is proven.
+- Live bounty/leaderboard reads currently hit the contract directly (`bounties(i)` in a loop). A
+  real Flap App would read via the **FSI query endpoint** instead, which is cheaper at scale.
+- `BuilderBounties.sol` isn't deployed to a public network yet — proven correct against a local
+  chain (see `chain-test/`), but the actual testnet deploy still needs Remix + MetaMask on a real
+  machine, since this sandbox can't reach BSC testnet RPC.
 
 ## Flap fit — confirmed
 
