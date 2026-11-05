@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bounties — Builder</title>
+<title>Bounty Finder — Builder</title>
 <meta name="description" content="Post a gig, find a builder, get it done. Payment and chat happen off-platform — this is just where the work and the reputation live.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,34 +12,112 @@
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <style>
-  .bounty-hero-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px; align-items: center; }
-  .bounty-hero-art { max-width: 320px; margin: 0 auto; position: relative; }
-  .bounty-hero-art img { width: 100%; filter: drop-shadow(0 25px 30px rgba(0,0,0,0.5)); animation: bounty-float 4.5s ease-in-out infinite; }
-  @keyframes bounty-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  /* ---------- App bar / hero ---------- */
+  .bounty-app {
+    position: relative; padding: 56px 0 36px; overflow: hidden;
+    border-bottom: 1px solid var(--line);
+    background-image: radial-gradient(rgba(201,154,63,0.16) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .bounty-app::before {
+    content: ""; position: absolute; top: -140px; right: -100px; width: 380px; height: 380px;
+    background: radial-gradient(circle, rgba(232,84,63,0.22), transparent 70%); pointer-events: none;
+  }
+  .bounty-app::after {
+    content: ""; position: absolute; bottom: -160px; left: -80px; width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(242,197,114,0.14), transparent 70%); pointer-events: none;
+  }
+  .app-topbar { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 30px; }
+  .app-id { display: flex; align-items: center; gap: 16px; }
+  .app-mascot-frame {
+    width: 62px; height: 62px; border-radius: 16px; border: 2px solid var(--gold-bright);
+    background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 0 26px rgba(242,197,114,0.25); flex-shrink: 0;
+  }
+  .app-mascot-frame img { width: 100%; height: 100%; object-fit: cover; }
+  .app-kicker { font-family: 'Space Mono', monospace; font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 4px; }
+  .app-title { font-size: 2rem; margin: 0; line-height: 1.05; }
+  .app-title .accent-crimson { font-style: normal; }
 
-  .how-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
-  .how-step { padding: 24px 18px; }
-  .how-step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--gold-bright); color: #171205; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: 'Space Mono', monospace; font-size: 0.85rem; margin-bottom: 14px; }
-  .how-step h3 { font-size: 0.96rem; margin-bottom: 6px; }
-  .how-step p { color: var(--text-muted); font-size: 0.84rem; margin: 0; line-height: 1.5; }
+  .app-stats { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .app-stat { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 16px; }
+  .app-stat.highlight { border-color: rgba(232,84,63,0.4); background: rgba(232,84,63,0.08); }
+  .app-stat-label { display: block; font-family: 'Space Mono', monospace; font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+  .app-stat-val { font-family: 'Clash Display', sans-serif; font-weight: 700; font-size: 1.25rem; color: var(--gold-bright); white-space: nowrap; }
+  .app-stat.highlight .app-stat-val { color: var(--crimson-bright); font-size: 0.92rem; font-family: 'Space Mono', monospace; }
 
-  .rules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .rule-card { padding: 24px 22px; }
-  .rule-icon { font-size: 1.5rem; margin-bottom: 12px; }
-  .rule-card h3 { font-size: 0.98rem; margin-bottom: 8px; }
-  .rule-card p { color: var(--text-muted); font-size: 0.86rem; margin: 0; line-height: 1.55; }
+  /* ---------- Browse: filters + search ---------- */
+  .browse-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .browse-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .browse-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .browse-search {
+    display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--line);
+    border-radius: 999px; padding: 9px 16px; min-width: 220px;
+  }
+  .browse-search svg { flex-shrink: 0; opacity: 0.5; }
+  .browse-search input { background: none; border: none; color: var(--text); font-family: inherit; font-size: 0.86rem; width: 100%; outline: none; }
+  .browse-search input::placeholder { color: var(--text-faint); }
 
-  .bounty-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .bounty-card { padding: 22px 20px; display: flex; flex-direction: column; gap: 10px; }
-  .bounty-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .bounty-card h3 { font-size: 1rem; margin: 0; }
-  .bounty-reward { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--gold-bright); font-size: 0.9rem; white-space: nowrap; }
-  .bounty-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.76rem; color: var(--text-faint); font-family: 'Space Mono', monospace; }
+  /* ---------- Bounty rows ---------- */
+  .bounty-rows { display: flex; flex-direction: column; gap: 12px; }
+  .bounty-row {
+    background: var(--bg-elevated); border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 20px 22px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .bounty-row:hover { transform: translateY(-2px); border-color: rgba(242,197,114,0.3); }
+  .bounty-icon {
+    width: 44px; height: 44px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; background: linear-gradient(135deg, rgba(242,197,114,0.22), rgba(232,84,63,0.22)); border: 1px solid var(--line);
+  }
+  .bounty-main { flex: 1 1 220px; min-width: 200px; }
+  .bounty-main h3 { margin: 0 0 4px; font-size: 1rem; }
+  .bounty-cat { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .bounty-stats-row { display: flex; gap: 26px; flex-wrap: wrap; }
+  .bounty-stat-label { display: block; font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+  .bounty-stat-val { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 0.86rem; color: var(--text); white-space: nowrap; }
+  .bounty-stat-val.reward { color: var(--gold-bright); }
+  .status-stamp {
+    font-family: 'Space Mono', monospace; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    border: 1.5px solid currentColor; border-radius: 5px; padding: 4px 10px; transform: rotate(-3deg); white-space: nowrap;
+  }
+  .status-stamp.open { color: var(--gold-bright); }
+  .status-stamp.claimed { color: var(--crimson-bright); }
+  .status-stamp.completed { color: var(--text-muted); border-style: dashed; }
+  .bounty-links { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+  .bounty-links a { font-size: 0.8rem; font-weight: 700; color: var(--crimson-bright); white-space: nowrap; }
+
+  /* ---------- How it works / rules (condensed) ---------- */
+  .how-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .how-step { padding: 20px 16px; }
+  .how-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--gold-bright); color: #171205; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: 'Space Mono', monospace; font-size: 0.82rem; margin-bottom: 12px; }
+  .how-step h3 { font-size: 0.92rem; margin-bottom: 5px; }
+  .how-step p { color: var(--text-muted); font-size: 0.82rem; margin: 0; line-height: 1.5; }
+
+  .rules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .rule-card { padding: 22px 20px; }
+  .rule-icon { font-size: 1.4rem; margin-bottom: 10px; }
+  .rule-card h3 { font-size: 0.94rem; margin-bottom: 7px; }
+  .rule-card p { color: var(--text-muted); font-size: 0.84rem; margin: 0; line-height: 1.55; }
 
   .pre-launch-note { background: rgba(232,84,63,0.1); border: 1px solid rgba(232,84,63,0.3); border-radius: var(--radius); padding: 14px 18px; font-size: 0.86rem; color: var(--text-muted); margin-top: 18px; text-align: center; }
 
-  @media (max-width: 980px) { .bounty-hero-grid { grid-template-columns: 1fr; } .how-steps { grid-template-columns: repeat(2,1fr); } .rules-grid, .bounty-grid { grid-template-columns: repeat(2,1fr); } }
-  @media (max-width: 560px) { .how-steps, .rules-grid, .bounty-grid { grid-template-columns: 1fr; } }
+  .lb-rank-badge {
+    font-family: 'Space Mono', monospace; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.04em; color: var(--ink);
+    background: var(--gold-bright); padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
+
+  @media (max-width: 980px) {
+    .app-stats { grid-template-columns: repeat(2,1fr); }
+    .how-steps { grid-template-columns: repeat(2,1fr); }
+    .rules-grid { grid-template-columns: repeat(2,1fr); }
+    .bounty-links { margin-left: 0; }
+  }
+  @media (max-width: 560px) {
+    .app-stats, .how-steps, .rules-grid { grid-template-columns: 1fr; }
+    .browse-head { flex-direction: column; align-items: stretch; }
+    .bounty-stats-row { gap: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -71,24 +149,60 @@
 </header>
 
 <main>
-  <section class="hero" style="padding:80px 0 60px;">
-    <div class="container bounty-hero-grid">
-      <div>
-        <p class="eyebrow-stamp">Get the gig</p>
-        <h1>Bounties for <span class="accent-gold">builders.</span></h1>
-        <p class="hero-sub" style="max-width:480px;">
-          Post a job. A builder claims it, does the work, and submits proof. You approve, you pay —
-          off-platform, your way. What stays here is the record: who delivered, who didn't, and
-          who's worth hiring again.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-crimson btn-lg" href="#post">Post a Bounty →</a>
-          <a class="btn btn-outline btn-lg" href="#browse">Browse Open Bounties</a>
+  <section class="bounty-app">
+    <div class="container">
+      <div class="app-topbar">
+        <div class="app-id">
+          <div class="app-mascot-frame"><img src="assets/mascot.png" alt="Builder mascot"></div>
+          <div>
+            <p class="app-kicker">BNB Chain · On-Chain Reputation</p>
+            <h1 class="app-title">Bounty <span class="accent-gold">Finder</span></h1>
+          </div>
+        </div>
+        <div class="hero-actions" style="margin:0;">
+          <a class="btn btn-crimson btn-lg" href="#post">+ Post a Bounty</a>
+          <a class="btn btn-outline btn-lg" href="#leaderboard">Hall of Builders</a>
         </div>
       </div>
-      <div class="bounty-hero-art">
-        <img src="assets/mascot.png" alt="Builder mascot with a briefcase, ready to take on a gig">
+
+      <div class="app-stats">
+        <div class="app-stat">
+          <span class="app-stat-label">Open Bounties</span>
+          <span class="app-stat-val" id="stat-open">—</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">Builders Active</span>
+          <span class="app-stat-val" id="stat-builders">—</span>
+        </div>
+        <div class="app-stat">
+          <span class="app-stat-label">Completed All-Time</span>
+          <span class="app-stat-val" id="stat-completed">—</span>
+        </div>
+        <div class="app-stat highlight">
+          <span class="app-stat-label">Payment &amp; Chat</span>
+          <span class="app-stat-val">Off-platform</span>
+        </div>
       </div>
+    </div>
+  </section>
+
+  <section class="block" id="browse">
+    <div class="container">
+      <div class="browse-head">
+        <div class="browse-filters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="open">Open</button>
+          <button class="chip" data-filter="claimed">Claimed</button>
+          <button class="chip" data-filter="completed">Completed</button>
+        </div>
+        <div class="browse-tools">
+          <div class="browse-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="bounty-search" placeholder="Search title or category...">
+          </div>
+        </div>
+      </div>
+      <div class="bounty-rows" id="bounty-list"></div>
     </div>
   </section>
 
@@ -152,18 +266,6 @@
           <p>The best track records get featured on X — the real incentive here isn't just points, it's getting seen.</p>
         </div>
       </div>
-    </div>
-  </section>
-
-  <section class="block" id="browse">
-    <div class="container">
-      <div class="block-head">
-        <div>
-          <h2>Open bounties</h2>
-          <p>Claim one, do the work, get paid your way.</p>
-        </div>
-      </div>
-      <div class="bounty-grid" id="bounty-list"></div>
     </div>
   </section>
 
