@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 </head>
 <body>
 
@@ -20,9 +21,13 @@
       <span class="brand-mark" aria-hidden="true">B</span>
       BUILDER FINDER
     </a>
-    <a class="back-link" href="#post">
-      Post a Bounty →
-    </a>
+    <div style="display:flex; align-items:center; gap:18px;">
+      <span id="wallet-status" class="mini-addr" style="display:none;"></span>
+      <button class="btn btn-outline btn-sm" id="connect-wallet-btn">Connect Wallet</button>
+      <a class="back-link" href="#post">
+        Post a Bounty →
+      </a>
+    </div>
   </div>
 </header>
 
@@ -234,6 +239,7 @@
   </div>
 </footer>
 
+<script src="web3.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

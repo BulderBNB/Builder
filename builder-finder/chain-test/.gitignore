@@ -1,0 +1,7 @@
+node_modules/
+artifact.json
+contracts/
+*.log
+*.pid
+cache/
+artifacts/
