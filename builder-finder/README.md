@@ -28,15 +28,32 @@ later without anything else in this repo caring.
   technically; the deterrent is public visibility, same logic as the non-payment reports being
   public but not auto-enforced.
 
+## Profiles
+
+Both sides get a profile at `profile.html?addr=0x...` — reachable from any address shown on a
+bounty row, the leaderboard, or by pasting a wallet into the lookup widget.
+
+- **Builder view**: points, completed count, strikes, full bounty history claimed by that
+  wallet. All derived from existing bounty records — no new contract state needed for this part.
+- **Poster view**: bounties posted and their statuses. Same — derived, not stored separately.
+- **Open for work / rate / skills**: genuinely new, since it's forward-looking and can't be
+  derived from past bounties. Self-set via `setBuilderProfile` on the contract — unverified, same
+  trust tier as a bounty's own reward label (a listing, not a guarantee).
+
 ## What exists right now
 
 - `index.html` / `styles.css` / `script.js` — a full static preview of the product: live stat
   strip (open bounties / active builders / completed all-time), filter pills, search, dense
-  bounty rows, post form, leaderboard. This is a **design/demo site**, not yet a Flap App.
+  bounty rows (with poster/claimer links into profiles), post form, a leaderboard computed from
+  real bounty history. This is a **design/demo site**, not yet a Flap App.
+- `profile.html` / `profile.js` — per-wallet profile page, see above.
 - `contracts/BuilderBounties.sol` — compiles clean (`solc 0.8.24`). Not deployed anywhere yet.
 - `contracts/FlapSharedIndexerV1.sol` — vendored verbatim from Flap's FSI spec (same base used
   by `BuilderQuiz.sol`).
 - `data/bounties.json` — empty array. Honest empty state, no fabricated example bounties.
+- `data/profiles.json` — empty object. Same.
+- `DISCORD_PLAN.md` — the Discord server plan (channels, roles, pinned copy). Live server:
+  https://discord.gg/xsQrp3eCx
 
 ## What's missing before this is an actual Flap App submission
 
@@ -53,10 +70,9 @@ Flap Apps are a `Component.tsx` built inside their `flap-vault-component-templat
 - `BuilderBounties.sol` isn't deployed to testnet yet (same step `BuilderQuiz.sol` needed via
   Remix before a `manifest.json` could reference a real `walletContracts` address).
 
-## Open strategic risk — unresolved with Flap
+## Flap fit — confirmed
 
-Every real Flap App we've been shown (StonksPad, ID Agent Curve, CORLA) is token/market-centric.
-Flap's own team pointed us toward **Pool Launch** (direct-to-DEX token mechanics) rather than
-the no-token mini-app spec. We have not confirmed with Flap that a no-payout utility app (a gig
-board with no token, no escrow) even fits their submission program. Don't sink the
-`Component.tsx` port effort in before that's actually confirmed — ask first.
+Previously flagged as an open risk: every real Flap App we'd been shown (StonksPad, ID Agent
+Curve, CORLA) was token/market-centric, and we hadn't confirmed a no-payout utility app even fit
+their program. **Confirmed directly with Flap — it fits.** Clear to move ahead on the
+`Component.tsx` port whenever we're ready to start it.
