@@ -67,21 +67,34 @@ bounty row, the leaderboard, or by pasting a wallet into the lookup widget.
 - `DISCORD_PLAN.md` — the Discord server plan (channels, roles, pinned copy). Live server:
   https://discord.gg/xsQrp3eCx
 
-## What's missing before this is an actual Flap App submission
+## Flap App source — written, not yet verified by their toolchain
 
-Flap Apps are a `Component.tsx` built inside their `flap-vault-component-template` via
-`yarn app:scaffold`, not a static site. None of this is done yet:
+`flap-app-source/` has the real submission source, written against
+`flap-sh/flap-vault-component-template` (`feat/mini-app-v2`) following their `AGENTS.md` and
+`docs/standalone-mini-apps.md`/`docs/mini-app-wallet.md`:
 
-- No `manifest.json` / `i18n.json` / `VaultABI.ts`.
-- No port of this UI into `Component.tsx` using Flap's controlled image/media components
-  (this preview uses plain `<img>`).
-- `web3.js` uses raw ethers.js against `window.ethereum`. Flap requires `useFlapSdk` only — this
-  needs re-wiring onto their SDK when the port happens, even though the logic itself is proven.
-- Live bounty/leaderboard reads currently hit the contract directly (`bounties(i)` in a loop). A
-  real Flap App would read via the **FSI query endpoint** instead, which is cheaper at scale.
+- `Component.tsx` — one compact card, three tabs (Browse / Post / Profile), using `useFlapSdk`
+  (not raw ethers/`window.ethereum` — that's `web3.js`'s job for the website, not this),
+  `TxButton`/`Alert`/`Metric`/`DataRow`/`AddressLink`/`CopyButton` from their UI kit. Their
+  checker blocks row-heavy marketing-style layouts, so this is deliberately tighter than the
+  website — no hero, no how-it-works/rules cards, just the functional tool.
+- `manifest.json` — `walletChains`/`walletContracts` declaring the exact `BuilderBounties.sol`
+  read/write signatures, per their reviewed-contract pattern. **Still has the zero address** —
+  needs the real deployed contract address before submission.
+- `VaultABI.ts` — same functions via viem's `parseAbi`, as their checker requires.
+- `i18n.json` — all copy in English, Chinese, Korean.
+
+Checked by hand against the template's real source (every component prop, every `i18n.t()` key
+across all three locales, forbidden-API list) since this sandbox can't run their actual toolchain
+— see `flap-app-source/README.md` for exactly what's verified vs. what still needs a real
+`yarn app:check`/`app:e2e` run on a machine that can `yarn install` this externally-cloned repo.
+
+Two things block an actual submission regardless of the component:
 - `BuilderBounties.sol` isn't deployed to a public network yet — proven correct against a local
-  chain (see `chain-test/`), but the actual testnet deploy still needs Remix + MetaMask on a real
-  machine, since this sandbox can't reach BSC testnet RPC.
+  chain (see `chain-test/`), but the real testnet deploy needs Remix + MetaMask on a real machine.
+- The live bounty/leaderboard reads in `Component.tsx` hit the contract directly in a loop
+  (`bounties(i)`). Fine at today's volume; a production version would read via Flap's **FSI query
+  endpoint** instead once there's real scale.
 
 ## Flap fit — confirmed
 
