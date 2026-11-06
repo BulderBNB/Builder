@@ -14,12 +14,6 @@
     return 'profile.html?addr=' + encodeURIComponent(addr);
   }
 
-  function avatarColor(addr) {
-    var hash = 0;
-    for (var i = 0; i < addr.length; i++) hash = (hash * 31 + addr.charCodeAt(i)) >>> 0;
-    return 'hsl(' + (hash % 360) + ', 65%, 55%)';
-  }
-
   var web3 = window.BuilderFinderWeb3;
   var connectedAddr = null;
 
@@ -116,7 +110,6 @@
   contentEl.hidden = false;
 
   document.getElementById('profile-avatar').textContent = addr.slice(2, 4).toUpperCase();
-  document.getElementById('profile-avatar').style.background = avatarColor(addr.toLowerCase());
   document.getElementById('profile-addr').textContent = truncateAddr(addr);
 
   document.getElementById('copy-addr-btn').addEventListener('click', function (e) {

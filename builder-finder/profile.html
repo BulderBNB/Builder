@@ -7,52 +7,53 @@
 <meta name="description" content="On-chain history and reputation for a Builder Finder wallet.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <style>
   .profile-header {
     display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 36px 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--gold-line);
   }
   .profile-avatar {
-    width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1.1rem; color: var(--ink);
+    width: 72px; height: 72px; border-radius: var(--radius); flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.3rem;
+    border: 1px solid var(--gold); background: var(--bg-elevated); color: var(--gold-bright);
   }
   .profile-id { flex: 1; min-width: 220px; }
   .profile-addr-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .profile-addr { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; }
   .copy-btn {
-    font-family: 'Space Mono', monospace; font-size: 0.68rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+    font-family: 'Space Mono', monospace; font-size: 0.66rem; font-weight: 700; padding: 4px 10px; border-radius: var(--radius);
     border: 1px solid var(--line); color: var(--text-muted); background: transparent; cursor: pointer;
+    letter-spacing: 0.04em; text-transform: uppercase;
   }
   .copy-btn:hover { border-color: var(--gold-bright); color: var(--gold-bright); }
   .profile-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .badge {
-    font-family: 'Space Mono', monospace; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 4px 10px; border-radius: 5px; border: 1.5px solid currentColor;
+    font-family: 'Space Mono', monospace; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: var(--radius); border: 1px solid currentColor;
   }
   .badge.open { color: var(--gold-bright); }
-  .badge.blacklist { color: var(--crimson-bright); }
+  .badge.blacklist { color: var(--down); }
   .profile-meta { color: var(--text-muted); font-size: 0.86rem; margin-top: 10px; }
   .profile-meta strong { color: var(--text); }
 
   .lookup-bar { display: flex; gap: 10px; margin: 24px 0; flex-wrap: wrap; }
   .lookup-bar input {
     flex: 1; min-width: 220px; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--line);
-    background: rgba(255,255,255,0.03); color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.86rem;
+    background: rgba(255,255,255,0.02); color: var(--text); font-family: 'Space Mono', monospace; font-size: 0.86rem;
   }
   .lookup-bar input::placeholder { color: var(--text-faint); }
-  .lookup-bar input:focus { outline: none; border-color: var(--gold-bright); }
+  .lookup-bar input:focus { outline: none; border-color: var(--gold); }
 
-  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 28px 0; }
-  .stat-tile { background: var(--bg-elevated); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
-  .stat-tile-label { display: block; font-family: 'Space Mono', monospace; font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
-  .stat-tile-val { font-family: 'Clash Display', sans-serif; font-weight: 700; font-size: 1.25rem; color: var(--gold-bright); }
-  .stat-tile-val.bad { color: var(--crimson-bright); }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 28px 0; background: var(--gold-line); border: 1px solid var(--gold-line); }
+  .stat-tile { background: var(--bg-elevated); border-top: 2px solid var(--gold); padding: 15px 18px; }
+  .stat-tile-label { display: block; font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 7px; }
+  .stat-tile-val { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1.3rem; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .stat-tile-val.bad { color: var(--down); }
 
-  .section-title { font-size: 1.1rem; margin: 40px 0 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title { font-size: 1.1rem; margin: 40px 0 16px; display: flex; align-items: center; gap: 10px; font-family: 'Playfair Display', serif; }
   .section-title .count { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--text-faint); font-weight: 400; }
 
   .mini-addr { font-family: 'Space Mono', monospace; font-size: 0.74rem; color: var(--text-muted); }
@@ -68,7 +69,7 @@
   <div class="container header-inner">
     <a href="index.html" class="brand">
       <span class="brand-mark" aria-hidden="true">B</span>
-      BUILDER FINDER
+      BUILDER<span class="brand-gold">FINDER</span>
     </a>
     <div style="display:flex; align-items:center; gap:18px;">
       <span id="wallet-status" class="mini-addr" style="display:none;"></span>
@@ -162,7 +163,7 @@
     <div class="footer-inner">
       <div class="footer-brand">
         <span class="brand-mark" aria-hidden="true">B</span>
-        BUILDER FINDER
+        BUILDER<span class="brand-gold">FINDER</span>
       </div>
       <div class="footer-links">
         <a href="https://discord.gg/xsQrp3eCx" target="_blank" rel="noopener">Discord</a>
