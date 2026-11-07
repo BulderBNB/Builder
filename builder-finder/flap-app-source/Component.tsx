@@ -23,7 +23,7 @@ import { BuilderBountiesAbi } from "./VaultABI";
 const CHAIN_ID = 97;
 // Paste the deployed BuilderBounties.sol address here once it is live on BSC Testnet.
 // Until then every read returns an empty list and every write stays disabled.
-const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+const CONTRACT_ADDRESS = "0x34f76bd241b16bbfac6fcc315336909a9527df7c" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 type Status = 0 | 1 | 2 | 3 | 4 | 5;

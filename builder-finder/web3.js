@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------
 (function (global) {
   var CONFIG = {
-    CONTRACT_ADDRESS: '', // e.g. '0x...' — paste the deployed address here once it exists
+    CONTRACT_ADDRESS: '0x34f76bd241b16bbfac6fcc315336909a9527df7c', // live on BSC Testnet
     RPC_URL: 'https://data-seed-prebsc-1-s1.bnbchain.org:8545', // public BSC testnet RPC, read-only browsing without a wallet
     CHAIN_ID: 97 // BSC testnet; 56 for mainnet
   };
