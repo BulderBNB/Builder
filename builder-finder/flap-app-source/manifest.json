@@ -20,7 +20,7 @@
   "walletChains": [97],
   "walletContracts": [
     {
-      "id": "builderBounties",
+      "id": "builder-bounties",
       "chainId": 97,
       "address": "0x0000000000000000000000000000000000000000",
       "allow": [
