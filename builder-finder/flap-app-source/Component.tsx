@@ -11,8 +11,11 @@ import {
   CardHeader,
   CardTitle,
   CopyButton,
+  Countdown,
   DataRow,
+  ExternalLink,
   Input,
+  IpfsImage,
   Metric,
   StatusBadge,
   TxButton,
@@ -21,10 +24,16 @@ import {
 import { BuilderBountiesAbi } from "./VaultABI";
 
 const CHAIN_ID = 97;
-// Paste the deployed BuilderBounties.sol address here once it is live on BSC Testnet.
-// Until then every read returns an empty list and every write stays disabled.
-const CONTRACT_ADDRESS = "0x34f76bd241b16bbfac6fcc315336909a9527df7c" as const;
+// Pending the v2 redeploy — paste the new BuilderBounties.sol address here once it's live on
+// BSC Testnet again. Until then every read returns an empty list and every write stays disabled.
+const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
+
+const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
+// Set once the logo is pinned to IPFS — the header just omits it until then.
+const LOGO_CID = "";
+
+const MAX_BOUNTY_DURATION_SECONDS = 30 * 24 * 3600;
 
 type Status = 0 | 1 | 2 | 3 | 4 | 5;
 type BountyTuple = readonly [
@@ -37,6 +46,7 @@ type BountyTuple = readonly [
   deadline: bigint,
   status: number,
   proofLink: string,
+  nonPaymentReported: boolean,
 ];
 
 interface Bounty {
@@ -50,6 +60,7 @@ interface Bounty {
   deadline: number;
   status: Status;
   proofLink: string;
+  nonPaymentReported: boolean;
 }
 
 const STATUS_I18N_KEYS = ["status.open", "status.claimed", "status.submitted", "status.approved", "status.expired", "status.cancelled"] as const;
@@ -74,12 +85,42 @@ function toBounty(id: number, tuple: BountyTuple): Bounty {
     deadline: Number(tuple[6]),
     status: tuple[7] as Status,
     proofLink: tuple[8],
+    nonPaymentReported: tuple[9],
   };
 }
 
 function formatDeadline(unixSeconds: number) {
   if (!unixSeconds) return "-";
   return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+}
+
+function isHttpsUrl(value: string) {
+  if (!value) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Brief/proof links can be any URL a user typed in, or just plain text — never a raw clickable
+ *  anchor either way. A URL goes through Flap's own "leaving FLAP" warning gate; plain text is
+ *  just shown as-is. */
+function LinkOrText({ value, label }: { value: string; label: string }) {
+  if (!value) return null;
+  if (isHttpsUrl(value)) {
+    return (
+      <DataRow
+        label={label}
+        value={
+          <ExternalLink url={value}>
+            {label} ↗
+          </ExternalLink>
+        }
+      />
+    );
+  }
+  return <DataRow label={label} value={<span className="break-words">{value}</span>} />;
 }
 
 export default function Component() {
@@ -95,6 +136,9 @@ export default function Component() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [proofDraftId, setProofDraftId] = useState<number | null>(null);
   const [proofDraft, setProofDraft] = useState("");
+  const [applicants, setApplicants] = useState<Record<number, `0x${string}`[]>>({});
+  const [applicantsOpenId, setApplicantsOpenId] = useState<number | null>(null);
+  const [applicantsLoading, setApplicantsLoading] = useState(false);
 
   const [postTitle, setPostTitle] = useState("");
   const [postBrief, setPostBrief] = useState("");
@@ -107,13 +151,14 @@ export default function Component() {
     completed: bigint;
     strikes: bigint;
     blacklisted: boolean;
-    openForWork: boolean;
-    rateLabel: string;
-    skillsLabel: string;
   } | null>(null);
   const [profileAvailable, setProfileAvailable] = useState(false);
   const [profileRate, setProfileRate] = useState("");
   const [profileSkills, setProfileSkills] = useState("");
+  const [profileX, setProfileX] = useState("");
+  const [profileTg, setProfileTg] = useState("");
+  const [profileGithub, setProfileGithub] = useState("");
+  const [profilePortfolio, setProfilePortfolio] = useState("");
 
   const txErrorMessages = useMemo(
     () => ({
@@ -168,7 +213,7 @@ export default function Component() {
       return;
     }
     try {
-      const [points, completed, strikes, blacklisted, openForWork, rate, skills] = await Promise.all([
+      const [points, completed, strikes, blacklisted, openWork, rate, skills, x, tg, github, portfolio] = await Promise.all([
         sdk.readContract<bigint>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "builderPoints", args: [wallet.address] }),
         sdk.readContract<bigint>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "buildersCompleted", args: [wallet.address] }),
         sdk.readContract<bigint>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "builderMissedStrikes", args: [wallet.address] }),
@@ -176,11 +221,19 @@ export default function Component() {
         sdk.readContract<boolean>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "openForWork", args: [wallet.address] }),
         sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "rateLabel", args: [wallet.address] }),
         sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "skillsLabel", args: [wallet.address] }),
+        sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "xHandle", args: [wallet.address] }),
+        sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "tgHandle", args: [wallet.address] }),
+        sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "githubHandle", args: [wallet.address] }),
+        sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "portfolioLink", args: [wallet.address] }),
       ]);
-      setProfile({ points, completed, strikes, blacklisted, openForWork, rateLabel: rate, skillsLabel: skills });
-      setProfileAvailable(openForWork);
+      setProfile({ points, completed, strikes, blacklisted });
+      setProfileAvailable(openWork);
       setProfileRate(rate);
       setProfileSkills(skills);
+      setProfileX(x);
+      setProfileTg(tg);
+      setProfileGithub(github);
+      setProfilePortfolio(portfolio);
     } catch (nextError) {
       setError(handleTxError(nextError, txErrorMessages));
     }
@@ -197,6 +250,9 @@ export default function Component() {
   const openCount = bounties.filter((b) => b.status === 0).length;
   const completedCount = bounties.filter((b) => b.status === 3).length;
   const builderCount = useMemo(() => new Set(bounties.filter((b) => b.builder !== ZERO_ADDRESS).map((b) => b.builder)).size, [bounties]);
+  // Expired/Cancelled listings are dead weight in the active list — everything else, including
+  // Approved, stays visible (a builder still needs to see it to use the report-non-payment action).
+  const visibleBounties = useMemo(() => bounties.filter((b) => b.status !== 4 && b.status !== 5), [bounties]);
 
   const canWrite = IS_LIVE && wallet.isConnected && !wallet.isWrongNetwork;
 
@@ -232,6 +288,10 @@ export default function Component() {
       return;
     }
     const deadlineUnix = postDeadline ? Math.floor(new Date(`${postDeadline}T00:00:00Z`).getTime() / 1000) : 0;
+    if (!deadlineUnix || deadlineUnix - Math.floor(Date.now() / 1000) > MAX_BOUNTY_DURATION_SECONDS) {
+      setError(t("errors.deadlineTooFar"));
+      return;
+    }
     await runWrite(
       "postBounty",
       [postTitle.trim(), postBrief.trim(), postReward.trim(), postCategory, BigInt(deadlineUnix)],
@@ -255,7 +315,51 @@ export default function Component() {
   }
 
   async function saveProfile() {
-    await runWrite("setBuilderProfile", [profileAvailable, profileRate.trim(), profileSkills.trim()], -2, t("messages.profileSaved"));
+    await runWrite(
+      "setProfile",
+      [
+        {
+          available: profileAvailable,
+          rate: profileRate.trim(),
+          skills: profileSkills.trim(),
+          x: profileX.trim(),
+          tg: profileTg.trim(),
+          github: profileGithub.trim(),
+          portfolio: profilePortfolio.trim(),
+        },
+      ],
+      -2,
+      t("messages.profileSaved"),
+    );
+  }
+
+  async function toggleApplicants(id: number) {
+    if (applicantsOpenId === id) {
+      setApplicantsOpenId(null);
+      return;
+    }
+    setApplicantsOpenId(id);
+    if (!applicants[id]) {
+      setApplicantsLoading(true);
+      try {
+        const list = await sdk.readContract<`0x${string}`[]>({
+          address: CONTRACT_ADDRESS,
+          abi: BuilderBountiesAbi,
+          functionName: "getApplicants",
+          args: [BigInt(id)],
+        });
+        setApplicants((prev) => ({ ...prev, [id]: list }));
+      } catch (nextError) {
+        setError(handleTxError(nextError, txErrorMessages));
+      } finally {
+        setApplicantsLoading(false);
+      }
+    }
+  }
+
+  async function selectApplicant(id: number, applicant: `0x${string}`) {
+    await runWrite("selectBuilder", [BigInt(id), applicant], id, t("messages.selectSuccess"));
+    setApplicantsOpenId(null);
   }
 
   return (
@@ -263,9 +367,15 @@ export default function Component() {
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <CardTitle>{t("app.title")}</CardTitle>
-              <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-white/60">{t("app.subtitle")}</p>
+            <div className="flex min-w-0 items-center gap-2.5">
+              {LOGO_CID ? <IpfsImage cid={LOGO_CID} alt="Builder Finder" className="h-8 w-8 flex-shrink-0 rounded-full" /> : null}
+              <div className="min-w-0">
+                <CardTitle>{t("app.title")}</CardTitle>
+                <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-white/60">{t("app.subtitle")}</p>
+                <ExternalLink url={OFFICIAL_X_URL} className="mt-1 inline-block text-xs text-white/42 underline">
+                  {t("actions.followX")}
+                </ExternalLink>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {wallet.isConnected ? (
@@ -316,12 +426,13 @@ export default function Component() {
           {tab === "browse" ? (
             <div className="space-y-2">
               {loading ? <Alert>{t("states.loading")}</Alert> : null}
-              {!loading && bounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
-              {bounties.map((bounty) => {
+              {!loading && visibleBounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
+              {visibleBounties.map((bounty) => {
                 const mine = wallet.address?.toLowerCase();
                 const isPoster = mine && bounty.poster.toLowerCase() === mine;
                 const isBuilder = mine && bounty.builder.toLowerCase() === mine;
                 const busy = activeId === bounty.id && txState !== "idle" && txState !== "failed";
+                const applicantList = applicants[bounty.id] ?? [];
                 return (
                   <div key={bounty.id} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -332,39 +443,83 @@ export default function Component() {
                       <StatusBadge tone={STATUS_TONE[bounty.status]}>{t(STATUS_I18N_KEYS[bounty.status])}</StatusBadge>
                     </div>
                     <DataRow label={t("labels.reward")} value={bounty.rewardLabel} />
-                    <DataRow label={t("labels.deadline")} value={formatDeadline(bounty.deadline)} />
+                    <DataRow
+                      label={t("labels.deadline")}
+                      value={
+                        bounty.status === 0 || bounty.status === 1 || bounty.status === 2 ? (
+                          <Countdown targetTimeMs={bounty.deadline * 1000} fallback={formatDeadline(bounty.deadline)} />
+                        ) : (
+                          formatDeadline(bounty.deadline)
+                        )
+                      }
+                    />
+                    <LinkOrText value={bounty.briefLink} label={t("labels.brief")} />
                     <DataRow label={t("labels.poster")} value={<AddressLink address={bounty.poster} explorerBaseUrl={context.explorerBaseUrl} />} />
                     {bounty.builder !== ZERO_ADDRESS ? (
                       <DataRow label={t("labels.builder")} value={<AddressLink address={bounty.builder} explorerBaseUrl={context.explorerBaseUrl} />} />
+                    ) : null}
+                    {bounty.status >= 2 ? <LinkOrText value={bounty.proofLink} label={t("labels.proof")} /> : null}
+
+                    {bounty.status === 0 && isPoster ? (
+                      <div className="mt-2 space-y-2">
+                        <Button className="w-full" size="sm" variant="outline" onClick={() => void toggleApplicants(bounty.id)}>
+                          {t("actions.viewApplicants")}
+                        </Button>
+                        {applicantsOpenId === bounty.id ? (
+                          <div className="space-y-1.5 rounded-[10px] border border-white/10 bg-black/30 p-2">
+                            {applicantsLoading ? <div className="text-xs text-white/56">{t("states.loading")}</div> : null}
+                            {!applicantsLoading && applicantList.length === 0 ? <div className="text-xs text-white/42">{t("states.noApplicants")}</div> : null}
+                            {applicantList.map((applicant) => (
+                              <div key={applicant} className="flex items-center justify-between gap-2">
+                                <AddressLink address={applicant} explorerBaseUrl={context.explorerBaseUrl} />
+                                <Button size="sm" onClick={() => void selectApplicant(bounty.id, applicant)} disabled={!canWrite || busy}>
+                                  {t("actions.select")}
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
 
                     {bounty.status === 0 && !isPoster ? (
                       <TxButton
                         className="mt-2 w-full"
-                        idleLabel={t("actions.claim")}
+                        idleLabel={t("actions.apply")}
                         state={activeId === bounty.id ? txState : "idle"}
-                        onClick={() => void runWrite("claimBounty", [BigInt(bounty.id)], bounty.id, t("messages.claimSuccess"))}
+                        onClick={() => void runWrite("applyToBounty", [BigInt(bounty.id)], bounty.id, t("messages.applySuccess"))}
                         disabled={!canWrite || busy}
                       />
                     ) : null}
 
                     {bounty.status === 1 && isBuilder ? (
-                      proofDraftId === bounty.id ? (
-                        <div className="mt-2 space-y-2">
-                          <Input value={proofDraft} placeholder={t("placeholders.proofLink")} onChange={(event) => setProofDraft(event.target.value)} />
-                          <TxButton
-                            className="w-full"
-                            idleLabel={t("actions.submitProof")}
-                            state={activeId === bounty.id ? txState : "idle"}
-                            onClick={() => void confirmProof(bounty.id)}
-                            disabled={!canWrite || busy}
-                          />
-                        </div>
-                      ) : (
-                        <Button className="mt-2 w-full" size="sm" variant="outline" onClick={() => setProofDraftId(bounty.id)} disabled={!canWrite}>
-                          {t("actions.submitProof")}
+                      <div className="mt-2 space-y-2">
+                        {proofDraftId === bounty.id ? (
+                          <div className="space-y-2">
+                            <Input value={proofDraft} placeholder={t("placeholders.proofLink")} onChange={(event) => setProofDraft(event.target.value)} />
+                            <TxButton
+                              className="w-full"
+                              idleLabel={t("actions.submitProof")}
+                              state={activeId === bounty.id ? txState : "idle"}
+                              onClick={() => void confirmProof(bounty.id)}
+                              disabled={!canWrite || busy}
+                            />
+                          </div>
+                        ) : (
+                          <Button className="w-full" size="sm" variant="outline" onClick={() => setProofDraftId(bounty.id)} disabled={!canWrite}>
+                            {t("actions.submitProof")}
+                          </Button>
+                        )}
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void runWrite("releaseBounty", [BigInt(bounty.id)], bounty.id, t("messages.releaseSuccess"))}
+                          disabled={!canWrite || busy}
+                        >
+                          {t("actions.release")}
                         </Button>
-                      )
+                      </div>
                     ) : null}
 
                     {bounty.status === 2 && isPoster ? (
@@ -378,15 +533,19 @@ export default function Component() {
                     ) : null}
 
                     {bounty.status === 3 && isBuilder ? (
-                      <Button
-                        className="mt-2 w-full"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void runWrite("reportNonPayment", [BigInt(bounty.id)], bounty.id, t("messages.reportSuccess"))}
-                        disabled={!canWrite || busy}
-                      >
-                        {t("actions.report")}
-                      </Button>
+                      bounty.nonPaymentReported ? (
+                        <div className="mt-2 text-xs text-white/42">{t("states.alreadyReported")}</div>
+                      ) : (
+                        <Button
+                          className="mt-2 w-full"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void runWrite("reportNonPayment", [BigInt(bounty.id)], bounty.id, t("messages.reportSuccess"))}
+                          disabled={!canWrite || busy}
+                        >
+                          {t("actions.report")}
+                        </Button>
+                      )
                     ) : null}
                   </div>
                 );
@@ -461,6 +620,22 @@ export default function Component() {
                   <label className="block space-y-2">
                     <span className="text-sm text-white/56">{t("labels.skills")}</span>
                     <Input value={profileSkills} placeholder={t("placeholders.skills")} onChange={(event) => setProfileSkills(event.target.value)} />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm text-white/56">{t("labels.x")}</span>
+                    <Input value={profileX} placeholder={t("placeholders.x")} onChange={(event) => setProfileX(event.target.value)} />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm text-white/56">{t("labels.telegram")}</span>
+                    <Input value={profileTg} placeholder={t("placeholders.telegram")} onChange={(event) => setProfileTg(event.target.value)} />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm text-white/56">{t("labels.github")}</span>
+                    <Input value={profileGithub} placeholder={t("placeholders.github")} onChange={(event) => setProfileGithub(event.target.value)} />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm text-white/56">{t("labels.portfolio")}</span>
+                    <Input value={profilePortfolio} placeholder={t("placeholders.portfolio")} onChange={(event) => setProfilePortfolio(event.target.value)} />
                   </label>
                   <TxButton
                     className="w-full"

@@ -22,20 +22,24 @@
     {
       "id": "builder-bounties",
       "chainId": 97,
-      "address": "0x34f76bd241b16bbfac6fcc315336909a9527df7c",
+      "address": "0x0000000000000000000000000000000000000000",
       "allow": [
         "function postBounty(string title, string briefLink, string rewardLabel, string category, uint64 deadline) returns (uint256 id)",
-        "function claimBounty(uint256 id)",
+        "function applyToBounty(uint256 id)",
+        "function selectBuilder(uint256 id, address builder)",
+        "function releaseBounty(uint256 id)",
         "function submitProof(uint256 id, string proofLink)",
         "function approveBounty(uint256 id)",
         "function reportNonPayment(uint256 id)",
         "function cancelBounty(uint256 id)",
         "function markExpired(uint256 id)",
-        "function setBuilderProfile(bool available, string rate, string skills)"
+        "function setProfile((bool available, string rate, string skills, string x, string tg, string github, string portfolio) input)"
       ],
       "read": [
         "function bountyCount() view returns (uint256)",
-        "function bounties(uint256) view returns (address poster, address builder, string title, string briefLink, string rewardLabel, string category, uint64 deadline, uint8 status, string proofLink)",
+        "function bounties(uint256) view returns (address poster, address builder, string title, string briefLink, string rewardLabel, string category, uint64 deadline, uint8 status, string proofLink, bool nonPaymentReported)",
+        "function getApplicants(uint256 id) view returns (address[])",
+        "function hasApplied(uint256, address) view returns (bool)",
         "function builderPoints(address) view returns (uint256)",
         "function buildersCompleted(address) view returns (uint256)",
         "function builderMissedStrikes(address) view returns (uint256)",
@@ -44,7 +48,11 @@
         "function posterBlacklisted(address) view returns (bool)",
         "function openForWork(address) view returns (bool)",
         "function rateLabel(address) view returns (string)",
-        "function skillsLabel(address) view returns (string)"
+        "function skillsLabel(address) view returns (string)",
+        "function xHandle(address) view returns (string)",
+        "function tgHandle(address) view returns (string)",
+        "function githubHandle(address) view returns (string)",
+        "function portfolioLink(address) view returns (string)"
       ]
     }
   ]
