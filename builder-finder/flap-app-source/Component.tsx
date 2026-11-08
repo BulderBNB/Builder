@@ -30,8 +30,7 @@ const CONTRACT_ADDRESS = "0x9f092558802b6a179d4c16feddb804c7c7dadc21" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
-// Set once the logo is pinned to IPFS — the header just omits it until then.
-const LOGO_CID = "";
+const LOGO_CID = "bafkreiejjzu5jygio3cefp535cd2licev5hqjm2ayi3psnawuc4di6ywb4";
 
 const MAX_BOUNTY_DURATION_SECONDS = 30 * 24 * 3600;
 
