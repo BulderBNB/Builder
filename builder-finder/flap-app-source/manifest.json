@@ -17,12 +17,12 @@
     "zh",
     "ko"
   ],
-  "walletChains": [97],
+  "walletChains": [56],
   "walletContracts": [
     {
       "id": "builder-bounties",
-      "chainId": 97,
-      "address": "0x9f092558802b6a179d4c16feddb804c7c7dadc21",
+      "chainId": 56,
+      "address": "0xb8ccb170a832ea8da2b7735d612de18c11f11613",
       "allow": [
         "function postBounty(string title, string briefLink, string rewardLabel, string category, uint64 deadline) returns (uint256 id)",
         "function applyToBounty(uint256 id)",
