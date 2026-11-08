@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { handleTxError, useFlapSdk, ZERO_ADDRESS } from "@/src/sdk";
 import {
   AddressLink,
@@ -123,6 +123,21 @@ function LinkOrText({ value, label }: { value: string; label: string }) {
   return <DataRow label={label} value={<span className="break-words">{value}</span>} />;
 }
 
+/** X/Telegram rows for a poster, builder, or applicant — omitted entirely for a field nobody set. */
+function ContactLinks({ contact, xLabel, tgLabel }: { contact?: { x: string; tg: string }; xLabel: string; tgLabel: string }) {
+  if (!contact || (!contact.x && !contact.tg)) return null;
+  return (
+    <>
+      {contact.x ? (
+        <DataRow label={xLabel} value={<ExternalLink url={`https://x.com/${contact.x.replace(/^@/, "")}`}>{contact.x}</ExternalLink>} />
+      ) : null}
+      {contact.tg ? (
+        <DataRow label={tgLabel} value={<ExternalLink url={`https://t.me/${contact.tg.replace(/^@/, "")}`}>{contact.tg}</ExternalLink>} />
+      ) : null}
+    </>
+  );
+}
+
 export default function Component() {
   const sdk = useFlapSdk({ chainId: CHAIN_ID });
   const { wallet, i18n, context } = sdk;
@@ -139,6 +154,13 @@ export default function Component() {
   const [applicants, setApplicants] = useState<Record<number, `0x${string}`[]>>({});
   const [applicantsOpenId, setApplicantsOpenId] = useState<number | null>(null);
   const [applicantsLoading, setApplicantsLoading] = useState(false);
+  // Keyed by lowercased address — fetched lazily and cached so the same poster/builder/applicant
+  // appearing on multiple bounties only costs one read each.
+  const [contacts, setContacts] = useState<Record<string, { x: string; tg: string }>>({});
+  const [posterReports, setPosterReports] = useState<Record<string, bigint>>({});
+  const [categoryFilter, setCategoryFilter] = useState<"All" | (typeof CATEGORIES)[number]>("All");
+  const fetchedContactsRef = useRef<Set<string>>(new Set());
+  const fetchedReportsRef = useRef<Set<string>>(new Set());
 
   const [postTitle, setPostTitle] = useState("");
   const [postBrief, setPostBrief] = useState("");
@@ -200,12 +222,62 @@ export default function Component() {
         }),
       );
       setBounties(rows);
+      const addresses = new Set<`0x${string}`>();
+      rows.forEach((b) => {
+        if (b.poster !== ZERO_ADDRESS) addresses.add(b.poster);
+        if (b.builder !== ZERO_ADDRESS) addresses.add(b.builder);
+      });
+      addresses.forEach((addr) => {
+        void ensureContact(addr);
+        void ensurePosterReports(addr);
+      });
     } catch (nextError) {
       setError(handleTxError(nextError, txErrorMessages));
     } finally {
       setLoading(false);
     }
   }, [sdk, txErrorMessages]);
+
+  /** Fetches and caches an address's X/Telegram handles once — same address across many
+   *  bounties costs one read, not one per appearance. */
+  const ensureContact = useCallback(
+    async (address: `0x${string}`) => {
+      const key = address.toLowerCase();
+      if (fetchedContactsRef.current.has(key)) return;
+      fetchedContactsRef.current.add(key);
+      try {
+        const [x, tg] = await Promise.all([
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "xHandle", args: [address] }),
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "tgHandle", args: [address] }),
+        ]);
+        setContacts((prev) => ({ ...prev, [key]: { x, tg } }));
+      } catch {
+        fetchedContactsRef.current.delete(key);
+      }
+    },
+    [sdk],
+  );
+
+  /** A poster's non-payment report count — shown so a builder can self-vet before applying. */
+  const ensurePosterReports = useCallback(
+    async (address: `0x${string}`) => {
+      const key = address.toLowerCase();
+      if (fetchedReportsRef.current.has(key)) return;
+      fetchedReportsRef.current.add(key);
+      try {
+        const count = await sdk.readContract<bigint>({
+          address: CONTRACT_ADDRESS,
+          abi: BuilderBountiesAbi,
+          functionName: "posterNonPaymentReports",
+          args: [address],
+        });
+        setPosterReports((prev) => ({ ...prev, [key]: count }));
+      } catch {
+        fetchedReportsRef.current.delete(key);
+      }
+    },
+    [sdk],
+  );
 
   const loadProfile = useCallback(async () => {
     if (!IS_LIVE || !wallet.address) {
@@ -253,6 +325,10 @@ export default function Component() {
   // Expired/Cancelled listings are dead weight in the active list — everything else, including
   // Approved, stays visible (a builder still needs to see it to use the report-non-payment action).
   const visibleBounties = useMemo(() => bounties.filter((b) => b.status !== 4 && b.status !== 5), [bounties]);
+  const filteredBounties = useMemo(
+    () => (categoryFilter === "All" ? visibleBounties : visibleBounties.filter((b) => b.category === categoryFilter)),
+    [visibleBounties, categoryFilter],
+  );
 
   const canWrite = IS_LIVE && wallet.isConnected && !wallet.isWrongNetwork;
 
@@ -349,6 +425,7 @@ export default function Component() {
           args: [BigInt(id)],
         });
         setApplicants((prev) => ({ ...prev, [id]: list }));
+        list.forEach((addr) => void ensureContact(addr));
       } catch (nextError) {
         setError(handleTxError(nextError, txErrorMessages));
       } finally {
@@ -425,9 +502,21 @@ export default function Component() {
 
           {tab === "browse" ? (
             <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {(["All", ...CATEGORIES] as const).map((cat) => (
+                  <Button
+                    key={cat}
+                    size="sm"
+                    variant={categoryFilter === cat ? "default" : "outline"}
+                    onClick={() => setCategoryFilter(cat)}
+                  >
+                    {cat === "All" ? t("categories.all") : t(CATEGORY_I18N_KEYS[cat])}
+                  </Button>
+                ))}
+              </div>
               {loading ? <Alert>{t("states.loading")}</Alert> : null}
-              {!loading && visibleBounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
-              {visibleBounties.map((bounty) => {
+              {!loading && filteredBounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
+              {filteredBounties.map((bounty) => {
                 const mine = wallet.address?.toLowerCase();
                 const isPoster = mine && bounty.poster.toLowerCase() === mine;
                 const isBuilder = mine && bounty.builder.toLowerCase() === mine;
@@ -455,8 +544,18 @@ export default function Component() {
                     />
                     <LinkOrText value={bounty.briefLink} label={t("labels.brief")} />
                     <DataRow label={t("labels.poster")} value={<AddressLink address={bounty.poster} explorerBaseUrl={context.explorerBaseUrl} />} />
+                    <ContactLinks contact={contacts[bounty.poster.toLowerCase()]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
+                    {(posterReports[bounty.poster.toLowerCase()] ?? 0n) > 0n ? (
+                      <DataRow
+                        label={t("labels.nonPaymentReports")}
+                        value={<StatusBadge tone="danger">{posterReports[bounty.poster.toLowerCase()]!.toString()}</StatusBadge>}
+                      />
+                    ) : null}
                     {bounty.builder !== ZERO_ADDRESS ? (
-                      <DataRow label={t("labels.builder")} value={<AddressLink address={bounty.builder} explorerBaseUrl={context.explorerBaseUrl} />} />
+                      <>
+                        <DataRow label={t("labels.builder")} value={<AddressLink address={bounty.builder} explorerBaseUrl={context.explorerBaseUrl} />} />
+                        <ContactLinks contact={contacts[bounty.builder.toLowerCase()]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
+                      </>
                     ) : null}
                     {bounty.status >= 2 ? <LinkOrText value={bounty.proofLink} label={t("labels.proof")} /> : null}
 
@@ -469,14 +568,29 @@ export default function Component() {
                           <div className="space-y-1.5 rounded-[10px] border border-white/10 bg-black/30 p-2">
                             {applicantsLoading ? <div className="text-xs text-white/56">{t("states.loading")}</div> : null}
                             {!applicantsLoading && applicantList.length === 0 ? <div className="text-xs text-white/42">{t("states.noApplicants")}</div> : null}
-                            {applicantList.map((applicant) => (
-                              <div key={applicant} className="flex items-center justify-between gap-2">
-                                <AddressLink address={applicant} explorerBaseUrl={context.explorerBaseUrl} />
-                                <Button size="sm" onClick={() => void selectApplicant(bounty.id, applicant)} disabled={!canWrite || busy}>
-                                  {t("actions.select")}
-                                </Button>
-                              </div>
-                            ))}
+                            {applicantList.map((applicant) => {
+                              const c = contacts[applicant.toLowerCase()];
+                              return (
+                                <div key={applicant} className="space-y-1 border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <AddressLink address={applicant} explorerBaseUrl={context.explorerBaseUrl} />
+                                    <Button size="sm" onClick={() => void selectApplicant(bounty.id, applicant)} disabled={!canWrite || busy}>
+                                      {t("actions.select")}
+                                    </Button>
+                                  </div>
+                                  {c?.x ? (
+                                    <div className="text-xs">
+                                      <ExternalLink url={`https://x.com/${c.x.replace(/^@/, "")}`}>{c.x}</ExternalLink>
+                                    </div>
+                                  ) : null}
+                                  {c?.tg ? (
+                                    <div className="text-xs">
+                                      <ExternalLink url={`https://t.me/${c.tg.replace(/^@/, "")}`}>{c.tg}</ExternalLink>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : null}
                       </div>
