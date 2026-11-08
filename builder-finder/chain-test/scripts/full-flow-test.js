@@ -160,6 +160,25 @@ async function main() {
   assertEq(await contract.githubHandle(builder.address), 'builderOctocat', 'githubHandle');
   assertEq(await contract.portfolioLink(builder.address), 'https://builder.example', 'portfolioLink');
 
+  console.log('\n--- builder registry: first setProfile registers, repeat does not duplicate ---');
+  assertEq(await contract.registeredBuilderCount(), 1, 'registeredBuilderCount after builder\'s first setProfile');
+  assertEq(await contract.registeredBuilderAt(0), builder.address, 'registeredBuilderAt(0) is builder');
+  await send(builder, contract.connect(builder), 'setProfile', [{
+    available: false,
+    rate: 'updated rate',
+    skills: 'Design, Figma',
+    x: '@builderHandle',
+    tg: '@builder_tg',
+    github: 'builderOctocat',
+    portfolio: 'https://builder.example',
+  }]);
+  assertEq(await contract.registeredBuilderCount(), 1, 'registeredBuilderCount unchanged after a second setProfile from the same address');
+  await send(builder3, contract.connect(builder3), 'setProfile', [{
+    available: true, rate: '', skills: '', x: '', tg: '', github: '', portfolio: '',
+  }]);
+  assertEq(await contract.registeredBuilderCount(), 2, 'registeredBuilderCount after a second distinct address registers');
+  assertEq(await contract.registeredBuilderAt(1), builder3.address, 'registeredBuilderAt(1) is builder3');
+
   console.log('\n--- owner clearProfile ---');
   await send(deployer, contract.connect(deployer), 'clearProfile', [builder.address]);
   assertEq(await contract.xHandle(builder.address), '', 'xHandle cleared by owner');

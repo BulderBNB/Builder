@@ -75,6 +75,12 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     mapping(address => string) public githubHandle;   // e.g. "octocat" — display only
     mapping(address => string) public portfolioLink;  // free text link — display only
 
+    /// @notice Every address that has ever called setProfile, in first-call order — lets a
+    ///         frontend list registered builders the same way it already lists bounties
+    ///         (count + indexed getter), without needing an off-chain indexer.
+    address[] private _registeredBuilders;
+    mapping(address => bool) public isRegistered;
+
     event BountyPosted(uint256 indexed id, address indexed poster, string title);
     event BountyApplied(uint256 indexed id, address indexed applicant);
     event BountySelected(uint256 indexed id, address indexed poster, address indexed builder);
@@ -316,6 +322,11 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         require(bytes(input.github).length <= MAX_PROFILE_FIELD_LEN, "github handle too long");
         require(bytes(input.portfolio).length <= MAX_PROFILE_FIELD_LEN, "portfolio link too long");
 
+        if (!isRegistered[msg.sender]) {
+            isRegistered[msg.sender] = true;
+            _registeredBuilders.push(msg.sender);
+        }
+
         openForWork[msg.sender] = input.available;
         rateLabel[msg.sender] = input.rate;
         skillsLabel[msg.sender] = input.skills;
@@ -325,6 +336,15 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         portfolioLink[msg.sender] = input.portfolio;
 
         emit ProfileUpdated(msg.sender, input.available);
+    }
+
+    function registeredBuilderCount() external view returns (uint256) {
+        return _registeredBuilders.length;
+    }
+
+    /// @notice Indexed like `bounties` — read 0..registeredBuilderCount()-1 to list everyone.
+    function registeredBuilderAt(uint256 index) external view returns (address) {
+        return _registeredBuilders[index];
     }
 
     // ---------------------------------------------------------------------
