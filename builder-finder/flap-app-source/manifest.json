@@ -22,7 +22,7 @@
     {
       "id": "builder-bounties",
       "chainId": 97,
-      "address": "0x964881cc7c76bbe110cf5197f31fac4187dc575f",
+      "address": "0x0000000000000000000000000000000000000000",
       "allow": [
         "function postBounty(string title, string briefLink, string rewardLabel, string category, uint64 deadline) returns (uint256 id)",
         "function applyToBounty(uint256 id)",

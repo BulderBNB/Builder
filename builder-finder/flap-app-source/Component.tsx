@@ -26,7 +26,9 @@ import { BuilderBountiesAbi } from "./VaultABI";
 const CHAIN_ID = 97;
 // Pending the v2 redeploy — paste the new BuilderBounties.sol address here once it's live on
 // BSC Testnet again. Until then every read returns an empty list and every write stays disabled.
-const CONTRACT_ADDRESS = "0x964881cc7c76bbe110cf5197f31fac4187dc575f" as const;
+// Pending redeploy — the live contract predates the mandatory-contact-info requires, so this
+// stays at the zero address (app shows "not live yet") until a fresh deploy goes out.
+const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
@@ -188,6 +190,8 @@ export default function Component() {
   const [proofDraft, setProofDraft] = useState("");
   const [applicants, setApplicants] = useState<Record<number, `0x${string}`[]>>({});
   const [applicantsOpenId, setApplicantsOpenId] = useState<number | null>(null);
+  const [expandedBountyId, setExpandedBountyId] = useState<number | null>(null);
+  const [expandedBuilderKey, setExpandedBuilderKey] = useState<string | null>(null);
   const [applicantsLoading, setApplicantsLoading] = useState(false);
   // Keyed by lowercased address — fetched lazily and cached so the same poster/builder/applicant
   // appearing on multiple bounties only costs one read each.
@@ -206,6 +210,10 @@ export default function Component() {
     Record<string, { available: boolean; rate: string; skills: string; github: string; portfolio: string }>
   >({});
   const fetchedBuilderProfileRef = useRef<Set<string>>(new Set());
+
+  // Whether the connected wallet has X or Telegram set — null until checked. Needed outside the
+  // Profile tab too, to gate Post/Apply with a friendly message instead of a raw contract revert.
+  const [myHasContact, setMyHasContact] = useState<boolean | null>(null);
 
   const [postTitle, setPostTitle] = useState("");
   const [postBrief, setPostBrief] = useState("");
@@ -454,6 +462,28 @@ export default function Component() {
     if (tab === "browse" && browseView === "builders" && builders.length === 0) void loadBuilders();
   }, [tab, browseView, loadBuilders]);
 
+  useEffect(() => {
+    if (!IS_LIVE || !wallet.address) {
+      setMyHasContact(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [x, tg] = await Promise.all([
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "xHandle", args: [wallet.address as `0x${string}`] }),
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "tgHandle", args: [wallet.address as `0x${string}`] }),
+        ]);
+        if (!cancelled) setMyHasContact(Boolean(x) || Boolean(tg));
+      } catch {
+        if (!cancelled) setMyHasContact(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sdk, wallet.address]);
+
   const openCount = bounties.filter((b) => b.status === 0).length;
   const completedCount = bounties.filter((b) => b.status === 3).length;
   const builderCount = useMemo(() => new Set(bounties.filter((b) => b.builder !== ZERO_ADDRESS).map((b) => b.builder)).size, [bounties]);
@@ -467,7 +497,7 @@ export default function Component() {
 
   const canWrite = IS_LIVE && wallet.isConnected && !wallet.isWrongNetwork;
 
-  async function runWrite(functionName: string, args: readonly unknown[], id: number, successMessage: string) {
+  async function runWrite(functionName: string, args: readonly unknown[], id: number, successMessage: string): Promise<boolean> {
     setActiveId(id);
     setError(null);
     try {
@@ -481,15 +511,21 @@ export default function Component() {
       sdk.notify.success(successMessage);
       await loadBounties();
       if (tab === "profile") await loadProfile();
+      return true;
     } catch (nextError) {
       setError(handleTxError(nextError, txErrorMessages));
       setTxState("failed");
+      return false;
     } finally {
       setActiveId(null);
     }
   }
 
   async function submitPost() {
+    if (!myHasContact) {
+      setError(t("errors.contactRequired"));
+      return;
+    }
     if (!postTitle.trim()) {
       setError(t("errors.titleRequired"));
       return;
@@ -526,7 +562,7 @@ export default function Component() {
   }
 
   async function saveProfile() {
-    await runWrite(
+    const ok = await runWrite(
       "setProfile",
       [
         {
@@ -542,6 +578,7 @@ export default function Component() {
       -2,
       t("messages.profileSaved"),
     );
+    if (ok) setMyHasContact(Boolean(profileX.trim()) || Boolean(profileTg.trim()));
   }
 
   async function toggleApplicants(id: number) {
@@ -651,6 +688,16 @@ export default function Component() {
 
               {browseView === "bounties" ? (
                 <>
+                  {wallet.isConnected && myHasContact === false ? (
+                    <Alert tone="warning">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>{t("errors.contactRequired")}</span>
+                        <Button size="sm" variant="outline" onClick={() => setTab("profile")}>
+                          {t("tabs.profile")}
+                        </Button>
+                      </div>
+                    </Alert>
+                  ) : null}
                   <div className="flex flex-wrap gap-1.5">
                     {(["All", ...CATEGORIES] as const).map((cat) => (
                       <Button
@@ -665,32 +712,35 @@ export default function Component() {
                   </div>
                   {loading ? <Alert>{t("states.loading")}</Alert> : null}
                   {!loading && filteredBounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredBounties.map((bounty) => {
                 const mine = wallet.address?.toLowerCase();
                 const isPoster = mine && bounty.poster.toLowerCase() === mine;
                 const isBuilder = mine && bounty.builder.toLowerCase() === mine;
                 const busy = activeId === bounty.id && txState !== "idle" && txState !== "failed";
                 const applicantList = applicants[bounty.id] ?? [];
+                const isExpanded = expandedBountyId === bounty.id;
                 return (
                   <div key={bounty.id} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">{bounty.title}</div>
-                        <div className="mt-1 text-xs text-white/42">{t(CATEGORY_I18N_KEYS[bounty.category as (typeof CATEGORIES)[number]] ?? "categories.dev")}</div>
+                    <div className="cursor-pointer" onClick={() => setExpandedBountyId(isExpanded ? null : bounty.id)}>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">{bounty.title}</div>
+                          <div className="mt-1 text-xs text-white/42">{t(CATEGORY_I18N_KEYS[bounty.category as (typeof CATEGORIES)[number]] ?? "categories.dev")}</div>
+                        </div>
+                        <StatusBadge tone={STATUS_TONE[bounty.status]}>{t(STATUS_I18N_KEYS[bounty.status])}</StatusBadge>
                       </div>
-                      <StatusBadge tone={STATUS_TONE[bounty.status]}>{t(STATUS_I18N_KEYS[bounty.status])}</StatusBadge>
-                    </div>
-                    <DataRow label={t("labels.reward")} value={bounty.rewardLabel} />
-                    <DataRow
-                      label={t("labels.deadline")}
-                      value={
-                        bounty.status === 0 || bounty.status === 1 || bounty.status === 2 ? (
+                      <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-white/56">
+                        <span className="truncate">{bounty.rewardLabel}</span>
+                        {bounty.status === 0 || bounty.status === 1 || bounty.status === 2 ? (
                           <Countdown targetTimeMs={bounty.deadline * 1000} fallback={formatDeadline(bounty.deadline)} />
                         ) : (
-                          formatDeadline(bounty.deadline)
-                        )
-                      }
-                    />
+                          <span>{formatDeadline(bounty.deadline)}</span>
+                        )}
+                      </div>
+                    </div>
+                    {!isExpanded ? null : (
+                    <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
                     <LinkOrText value={bounty.briefLink} label={t("labels.brief")} />
                     <DataRow label={t("labels.poster")} value={<AddressLink address={bounty.poster} explorerBaseUrl={context.explorerBaseUrl} />} />
                     <ContactLinks contact={contacts[bounty.poster.toLowerCase()]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
@@ -764,7 +814,13 @@ export default function Component() {
                         className="mt-2 w-full"
                         idleLabel={t("actions.apply")}
                         state={activeId === bounty.id ? txState : "idle"}
-                        onClick={() => void runWrite("applyToBounty", [BigInt(bounty.id)], bounty.id, t("messages.applySuccess"))}
+                        onClick={() => {
+                          if (!myHasContact) {
+                            setError(t("errors.contactRequired"));
+                            return;
+                          }
+                          void runWrite("applyToBounty", [BigInt(bounty.id)], bounty.id, t("messages.applySuccess"));
+                        }}
                         disabled={!canWrite || busy}
                       />
                     ) : null}
@@ -824,9 +880,12 @@ export default function Component() {
                         </Button>
                       )
                     ) : null}
+                    </div>
+                    )}
                   </div>
                 );
               })}
+                  </div>
                 </>
               ) : (
                 <>
@@ -847,22 +906,29 @@ export default function Component() {
                       return true;
                     });
                     if (!buildersLoading && visible.length === 0) return <Alert>{t("states.noBuilders")}</Alert>;
-                    return visible.map((addr) => {
+                    return (
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {visible.map((addr) => {
                       const key = addr.toLowerCase();
                       const prof = builderProfiles[key];
+                      const isExpanded = expandedBuilderKey === key;
                       return (
                         <div key={addr} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <AddressLink address={addr} explorerBaseUrl={context.explorerBaseUrl} />
-                            {prof?.available ? <StatusBadge tone="success">{t("labels.openForWork")}</StatusBadge> : null}
+                          <div className="cursor-pointer" onClick={() => setExpandedBuilderKey(isExpanded ? null : key)}>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <AddressLink address={addr} explorerBaseUrl={context.explorerBaseUrl} />
+                              {prof?.available ? <StatusBadge tone="success">{t("labels.openForWork")}</StatusBadge> : null}
+                            </div>
+                            <ReputationLine
+                              rep={reputations[key]}
+                              pointsLabel={t("labels.points")}
+                              completedLabel={t("labels.completedCount")}
+                              strikesLabel={t("labels.strikes")}
+                              blacklistedLabel={t("status.cancelled")}
+                            />
                           </div>
-                          <ReputationLine
-                            rep={reputations[key]}
-                            pointsLabel={t("labels.points")}
-                            completedLabel={t("labels.completedCount")}
-                            strikesLabel={t("labels.strikes")}
-                            blacklistedLabel={t("status.cancelled")}
-                          />
+                          {!isExpanded ? null : (
+                          <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
                           {prof?.rate ? <DataRow label={t("labels.rate")} value={prof.rate} /> : null}
                           {prof?.skills ? <DataRow label={t("labels.skills")} value={prof.skills} /> : null}
                           <ContactLinks contact={contacts[key]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
@@ -870,9 +936,13 @@ export default function Component() {
                             <DataRow label={t("labels.github")} value={<ExternalLink url={`https://github.com/${prof.github.replace(/^@/, "")}`}>{prof.github}</ExternalLink>} />
                           ) : null}
                           <LinkOrText value={prof?.portfolio ?? ""} label={t("labels.portfolio")} />
+                          </div>
+                          )}
                         </div>
                       );
-                    });
+                      })}
+                      </div>
+                    );
                   })()}
                 </>
               )}
@@ -881,6 +951,16 @@ export default function Component() {
 
           {tab === "post" ? (
             <div className="space-y-3">
+              {wallet.isConnected && myHasContact === false ? (
+                <Alert tone="warning">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{t("errors.contactRequired")}</span>
+                    <Button size="sm" variant="outline" onClick={() => setTab("profile")}>
+                      {t("tabs.profile")}
+                    </Button>
+                  </div>
+                </Alert>
+              ) : null}
               <label className="block space-y-2">
                 <span className="text-sm text-white/56">{t("labels.title")}</span>
                 <Input value={postTitle} placeholder={t("placeholders.title")} onChange={(event) => setPostTitle(event.target.value)} />

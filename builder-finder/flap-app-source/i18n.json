@@ -87,6 +87,7 @@
     "errors.rewardRequired": "Enter a reward.",
     "errors.proofRequired": "Enter a link to the finished work.",
     "errors.deadlineTooFar": "Pick a deadline, at most 30 days out.",
+    "errors.contactRequired": "Set your X or Telegram in your profile first — posting and applying need a way for people to reach you.",
     "notices.rules": "Missing a deadline auto-strikes a builder; three strikes auto-blacklist them. Non-payment reports are logged publicly but never auto-blacklist a poster on their own — that's a reviewed call.",
     "states.notLiveYet": "Posting opens once BuilderBounties.sol is live on-chain. Check back soon."
   },
@@ -178,6 +179,7 @@
     "errors.rewardRequired": "请填写报酬。",
     "errors.proofRequired": "请提供成果链接。",
     "errors.deadlineTooFar": "请选择不超过 30 天后的截止日期。",
+    "errors.contactRequired": "请先在个人资料中填写 X 或 Telegram——发布和申请都需要让别人能联系到你。",
     "notices.rules": "错过截止日期会自动记一次违约，三次违约自动拉黑；未付款举报会被公开记录，但不会自动拉黑发布者——这是人工复核的决定。",
     "states.notLiveYet": "合约上线后即可发布。请稍后再来查看。"
   },
@@ -269,6 +271,7 @@
     "errors.rewardRequired": "보상을 입력하세요.",
     "errors.proofRequired": "결과물 링크를 입력하세요.",
     "errors.deadlineTooFar": "최대 30일 이내의 마감일을 선택하세요.",
+    "errors.contactRequired": "먼저 프로필에 X 또는 Telegram을 입력하세요 — 등록과 지원 모두 연락할 방법이 필요합니다.",
     "notices.rules": "마감을 놓치면 자동으로 경고가 기록되고, 3회 누적 시 자동으로 블랙리스트에 오릅니다. 미지급 신고는 공개적으로 기록되지만 등록자를 자동으로 블랙리스트에 올리지는 않으며, 이는 검토 후 결정됩니다.",
     "states.notLiveYet": "BuilderBounties.sol이 온체인에 배포되면 등록이 가능합니다. 곧 다시 확인해주세요."
   }
