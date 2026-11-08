@@ -616,8 +616,8 @@ export default function Component() {
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              {LOGO_CID ? <IpfsImage cid={LOGO_CID} alt="Builder Finder" className="h-8 w-8 flex-shrink-0 rounded-full" /> : null}
+            <div className="flex min-w-0 items-center gap-3">
+              {LOGO_CID ? <IpfsImage cid={LOGO_CID} alt="Builder Finder" className="h-16 w-16 flex-shrink-0 rounded-full object-cover" /> : null}
               <div className="min-w-0">
                 <CardTitle>{t("app.title")}</CardTitle>
                 <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-white/60">{t("app.subtitle")}</p>
