@@ -14,6 +14,7 @@ const input = {
   language: 'Solidity',
   sources: { 'BuilderBounties.sol': { content: source } },
   settings: {
+    optimizer: { enabled: true, runs: 200 },
     outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } },
   },
 };

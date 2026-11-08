@@ -74,6 +74,16 @@ async function main() {
   console.log('Deployed BuilderBounties at', addr);
   assertEq(await contract.owner(), deployer.address, 'owner is deployer');
 
+  console.log('\n--- everyone sets contact info first (now required before posting/applying/selecting) ---');
+  const blankProfile = (x) => ({ available: false, rate: '', skills: '', x, tg: '', github: '', portfolio: '' });
+  for (const [wallet, handle] of [[poster, '@poster'], [builder, '@builder'], [builder2, '@builder2'], [builder3, '@builder3']]) {
+    await send(wallet, contract.connect(wallet), 'setProfile', [blankProfile(handle)]);
+  }
+  await assertReverts(
+    send(deployer, contract.connect(deployer), 'postBounty', ['No contact set', '', '1 BNB', 'Dev', Math.floor(Date.now() / 1000) + 3600]),
+    'postBounty from an address with no X/TG set reverts',
+  );
+
   console.log('\n--- postBounty ---');
   const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour out
   await send(poster, contract.connect(poster), 'postBounty', ['Design a banner', 'https://x.com/example', '0.5 BNB', 'Design', deadline]);
@@ -160,9 +170,11 @@ async function main() {
   assertEq(await contract.githubHandle(builder.address), 'builderOctocat', 'githubHandle');
   assertEq(await contract.portfolioLink(builder.address), 'https://builder.example', 'portfolioLink');
 
-  console.log('\n--- builder registry: first setProfile registers, repeat does not duplicate ---');
-  assertEq(await contract.registeredBuilderCount(), 1, 'registeredBuilderCount after builder\'s first setProfile');
-  assertEq(await contract.registeredBuilderAt(0), builder.address, 'registeredBuilderAt(0) is builder');
+  console.log('\n--- builder registry: everyone who set a profile is listed once, no duplicates on update ---');
+  assertEq(await contract.registeredBuilderCount(), 4, 'registeredBuilderCount after the four initial setProfile calls');
+  assertEq(await contract.registeredBuilderAt(0), poster.address, 'registeredBuilderAt(0) is poster');
+  assertEq(await contract.registeredBuilderAt(1), builder.address, 'registeredBuilderAt(1) is builder');
+  assertEq(await contract.registeredBuilderAt(3), builder3.address, 'registeredBuilderAt(3) is builder3');
   await send(builder, contract.connect(builder), 'setProfile', [{
     available: false,
     rate: 'updated rate',
@@ -172,12 +184,7 @@ async function main() {
     github: 'builderOctocat',
     portfolio: 'https://builder.example',
   }]);
-  assertEq(await contract.registeredBuilderCount(), 1, 'registeredBuilderCount unchanged after a second setProfile from the same address');
-  await send(builder3, contract.connect(builder3), 'setProfile', [{
-    available: true, rate: '', skills: '', x: '', tg: '', github: '', portfolio: '',
-  }]);
-  assertEq(await contract.registeredBuilderCount(), 2, 'registeredBuilderCount after a second distinct address registers');
-  assertEq(await contract.registeredBuilderAt(1), builder3.address, 'registeredBuilderAt(1) is builder3');
+  assertEq(await contract.registeredBuilderCount(), 4, 'registeredBuilderCount unchanged after a second setProfile from the same address');
 
   console.log('\n--- owner clearProfile ---');
   await send(deployer, contract.connect(deployer), 'clearProfile', [builder.address]);

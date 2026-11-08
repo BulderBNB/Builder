@@ -81,6 +81,14 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     address[] private _registeredBuilders;
     mapping(address => bool) public isRegistered;
 
+    /// @notice Posting, applying, and being selected all require this — nobody should be able to
+    ///         act on a bounty while staying a bare, unreachable address. Checked live against
+    ///         the real fields, not a one-time "did you ever call setProfile" flag, so clearing a
+    ///         contact later (via `clearProfile`) re-blocks them too.
+    function _hasContact(address who) private view returns (bool) {
+        return bytes(xHandle[who]).length > 0 || bytes(tgHandle[who]).length > 0;
+    }
+
     event BountyPosted(uint256 indexed id, address indexed poster, string title);
     event BountyApplied(uint256 indexed id, address indexed applicant);
     event BountySelected(uint256 indexed id, address indexed poster, address indexed builder);
@@ -122,6 +130,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         uint64 deadline
     ) external returns (uint256 id) {
         require(!posterBlacklisted[msg.sender], "poster blacklisted");
+        require(_hasContact(msg.sender), "set your X or Telegram first");
         require(bytes(title).length > 0 && bytes(title).length <= MAX_TITLE_LEN, "bad title");
         require(bytes(briefLink).length <= MAX_LINK_LEN, "brief link too long");
         require(deadline > block.timestamp, "deadline already passed");
@@ -165,6 +174,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         require(b.status == Status.Open, "not open");
         require(block.timestamp < b.deadline, "deadline passed");
         require(!builderBlacklisted[msg.sender], "builder blacklisted");
+        require(_hasContact(msg.sender), "set your X or Telegram first");
         require(msg.sender != b.poster, "cannot apply to your own bounty");
         require(!hasApplied[id][msg.sender], "already applied");
         require(_applicants[id].length < MAX_APPLICANTS, "too many applicants");
@@ -190,6 +200,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         require(block.timestamp < b.deadline, "deadline passed");
         require(builder != address(0) && builder != msg.sender, "bad builder");
         require(!builderBlacklisted[builder], "builder blacklisted");
+        require(_hasContact(builder), "builder has no contact info set");
 
         b.builder = builder;
         b.status = Status.Claimed;
