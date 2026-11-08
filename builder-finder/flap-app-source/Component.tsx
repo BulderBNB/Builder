@@ -123,6 +123,40 @@ function LinkOrText({ value, label }: { value: string; label: string }) {
   return <DataRow label={label} value={<span className="break-words">{value}</span>} />;
 }
 
+/** A compact track-record line for an applicant or an already-selected builder — reuses the same
+ *  i18n labels the Profile tab uses for its own stats, so no new keys are needed. */
+function ReputationLine({
+  rep,
+  pointsLabel,
+  completedLabel,
+  strikesLabel,
+  blacklistedLabel,
+}: {
+  rep?: { points: bigint; completed: bigint; strikes: bigint; blacklisted: boolean };
+  pointsLabel: string;
+  completedLabel: string;
+  strikesLabel: string;
+  blacklistedLabel: string;
+}) {
+  if (!rep) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/56">
+      <span>
+        {pointsLabel} {rep.points.toString()}
+      </span>
+      <span>
+        {completedLabel} {rep.completed.toString()}
+      </span>
+      {rep.strikes > 0n ? (
+        <span className="text-amber-400">
+          {strikesLabel} {rep.strikes.toString()}
+        </span>
+      ) : null}
+      {rep.blacklisted ? <StatusBadge tone="danger">{blacklistedLabel}</StatusBadge> : null}
+    </div>
+  );
+}
+
 /** X/Telegram rows for a poster, builder, or applicant — omitted entirely for a field nobody set. */
 function ContactLinks({ contact, xLabel, tgLabel }: { contact?: { x: string; tg: string }; xLabel: string; tgLabel: string }) {
   if (!contact || (!contact.x && !contact.tg)) return null;
@@ -158,9 +192,11 @@ export default function Component() {
   // appearing on multiple bounties only costs one read each.
   const [contacts, setContacts] = useState<Record<string, { x: string; tg: string }>>({});
   const [posterReports, setPosterReports] = useState<Record<string, bigint>>({});
+  const [reputations, setReputations] = useState<Record<string, { points: bigint; completed: bigint; strikes: bigint; blacklisted: boolean }>>({});
   const [categoryFilter, setCategoryFilter] = useState<"All" | (typeof CATEGORIES)[number]>("All");
   const fetchedContactsRef = useRef<Set<string>>(new Set());
   const fetchedReportsRef = useRef<Set<string>>(new Set());
+  const fetchedReputationRef = useRef<Set<string>>(new Set());
 
   const [postTitle, setPostTitle] = useState("");
   const [postBrief, setPostBrief] = useState("");
@@ -231,6 +267,9 @@ export default function Component() {
         void ensureContact(addr);
         void ensurePosterReports(addr);
       });
+      rows.forEach((b) => {
+        if (b.builder !== ZERO_ADDRESS) void ensureReputation(b.builder);
+      });
     } catch (nextError) {
       setError(handleTxError(nextError, txErrorMessages));
     } finally {
@@ -274,6 +313,28 @@ export default function Component() {
         setPosterReports((prev) => ({ ...prev, [key]: count }));
       } catch {
         fetchedReportsRef.current.delete(key);
+      }
+    },
+    [sdk],
+  );
+
+  /** A builder's track record (points/completed/strikes/blacklisted) — shown for applicants and a
+   *  selected builder so a poster can actually judge reliability, not just see an address. */
+  const ensureReputation = useCallback(
+    async (address: `0x${string}`) => {
+      const key = address.toLowerCase();
+      if (fetchedReputationRef.current.has(key)) return;
+      fetchedReputationRef.current.add(key);
+      try {
+        const [points, completed, strikes, blacklisted] = await Promise.all([
+          sdk.readContract<bigint>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "builderPoints", args: [address] }),
+          sdk.readContract<bigint>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "buildersCompleted", args: [address] }),
+          sdk.readContract<bigint>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "builderMissedStrikes", args: [address] }),
+          sdk.readContract<boolean>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "builderBlacklisted", args: [address] }),
+        ]);
+        setReputations((prev) => ({ ...prev, [key]: { points, completed, strikes, blacklisted } }));
+      } catch {
+        fetchedReputationRef.current.delete(key);
       }
     },
     [sdk],
@@ -425,7 +486,10 @@ export default function Component() {
           args: [BigInt(id)],
         });
         setApplicants((prev) => ({ ...prev, [id]: list }));
-        list.forEach((addr) => void ensureContact(addr));
+        list.forEach((addr) => {
+          void ensureContact(addr);
+          void ensureReputation(addr);
+        });
       } catch (nextError) {
         setError(handleTxError(nextError, txErrorMessages));
       } finally {
@@ -554,6 +618,13 @@ export default function Component() {
                     {bounty.builder !== ZERO_ADDRESS ? (
                       <>
                         <DataRow label={t("labels.builder")} value={<AddressLink address={bounty.builder} explorerBaseUrl={context.explorerBaseUrl} />} />
+                        <ReputationLine
+                          rep={reputations[bounty.builder.toLowerCase()]}
+                          pointsLabel={t("labels.points")}
+                          completedLabel={t("labels.completedCount")}
+                          strikesLabel={t("labels.strikes")}
+                          blacklistedLabel={t("status.cancelled")}
+                        />
                         <ContactLinks contact={contacts[bounty.builder.toLowerCase()]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
                       </>
                     ) : null}
@@ -588,6 +659,13 @@ export default function Component() {
                                       <ExternalLink url={`https://t.me/${c.tg.replace(/^@/, "")}`}>{c.tg}</ExternalLink>
                                     </div>
                                   ) : null}
+                                  <ReputationLine
+                                    rep={reputations[applicant.toLowerCase()]}
+                                    pointsLabel={t("labels.points")}
+                                    completedLabel={t("labels.completedCount")}
+                                    strikesLabel={t("labels.strikes")}
+                                    blacklistedLabel={t("status.cancelled")}
+                                  />
                                 </div>
                               );
                             })}
