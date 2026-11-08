@@ -28,4 +28,6 @@ export const BuilderBountiesAbi = parseAbi([
   "function tgHandle(address) view returns (string)",
   "function githubHandle(address) view returns (string)",
   "function portfolioLink(address) view returns (string)",
+  "function registeredBuilderCount() view returns (uint256)",
+  "function registeredBuilderAt(uint256 index) view returns (address)",
 ]);

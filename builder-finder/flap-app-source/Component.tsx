@@ -26,7 +26,10 @@ import { BuilderBountiesAbi } from "./VaultABI";
 const CHAIN_ID = 97;
 // Pending the v2 redeploy — paste the new BuilderBounties.sol address here once it's live on
 // BSC Testnet again. Until then every read returns an empty list and every write stays disabled.
-const CONTRACT_ADDRESS = "0x3db14f0fd0bbf21b8a0fb14fe5c24fb3e613dae6" as const;
+// Pending the registry redeploy — the currently-live 0x3db14f0f... contract predates
+// registeredBuilderCount/registeredBuilderAt, so this stays at the zero address (app shows
+// "not live yet") until a fresh deploy of the current contracts/BuilderBounties.sol goes out.
+const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
@@ -177,7 +180,7 @@ export default function Component() {
   const { wallet, i18n, context } = sdk;
   const t = i18n.t;
 
-  const [tab, setTab] = useState<"browse" | "post" | "profile">("browse");
+  const [tab, setTab] = useState<"browse" | "post" | "builders" | "profile">("browse");
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +200,14 @@ export default function Component() {
   const fetchedContactsRef = useRef<Set<string>>(new Set());
   const fetchedReportsRef = useRef<Set<string>>(new Set());
   const fetchedReputationRef = useRef<Set<string>>(new Set());
+
+  const [builders, setBuilders] = useState<`0x${string}`[]>([]);
+  const [buildersLoading, setBuildersLoading] = useState(false);
+  const [openForWorkOnly, setOpenForWorkOnly] = useState(false);
+  const [builderProfiles, setBuilderProfiles] = useState<
+    Record<string, { available: boolean; rate: string; skills: string; github: string; portfolio: string }>
+  >({});
+  const fetchedBuilderProfileRef = useRef<Set<string>>(new Set());
 
   const [postTitle, setPostTitle] = useState("");
   const [postBrief, setPostBrief] = useState("");
@@ -340,6 +351,67 @@ export default function Component() {
     [sdk],
   );
 
+  const loadBuilders = useCallback(async () => {
+    if (!IS_LIVE) {
+      setBuilders([]);
+      return;
+    }
+    setBuildersLoading(true);
+    try {
+      const count = await sdk.readContract<bigint>({
+        address: CONTRACT_ADDRESS,
+        abi: BuilderBountiesAbi,
+        functionName: "registeredBuilderCount",
+      });
+      const total = Number(count);
+      const indexes = Array.from({ length: total }, (_, index) => total - 1 - index).slice(0, 25);
+      const addresses = await Promise.all(
+        indexes.map((index) =>
+          sdk.readContract<`0x${string}`>({
+            address: CONTRACT_ADDRESS,
+            abi: BuilderBountiesAbi,
+            functionName: "registeredBuilderAt",
+            args: [BigInt(index)],
+          }),
+        ),
+      );
+      setBuilders(addresses);
+      addresses.forEach((addr) => {
+        void ensureReputation(addr);
+        void ensureContact(addr);
+        void ensureBuilderProfile(addr);
+      });
+    } catch (nextError) {
+      setError(handleTxError(nextError, txErrorMessages));
+    } finally {
+      setBuildersLoading(false);
+    }
+  }, [sdk, txErrorMessages]);
+
+  /** The rest of a builder's listing beyond X/TG (already cached by ensureContact) and
+   *  points/completed/strikes (already cached by ensureReputation) — kept separate since this
+   *  data is only needed in the Builders directory, not on every bounty card. */
+  const ensureBuilderProfile = useCallback(
+    async (address: `0x${string}`) => {
+      const key = address.toLowerCase();
+      if (fetchedBuilderProfileRef.current.has(key)) return;
+      fetchedBuilderProfileRef.current.add(key);
+      try {
+        const [available, rate, skills, github, portfolio] = await Promise.all([
+          sdk.readContract<boolean>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "openForWork", args: [address] }),
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "rateLabel", args: [address] }),
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "skillsLabel", args: [address] }),
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "githubHandle", args: [address] }),
+          sdk.readContract<string>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "portfolioLink", args: [address] }),
+        ]);
+        setBuilderProfiles((prev) => ({ ...prev, [key]: { available, rate, skills, github, portfolio } }));
+      } catch {
+        fetchedBuilderProfileRef.current.delete(key);
+      }
+    },
+    [sdk],
+  );
+
   const loadProfile = useCallback(async () => {
     if (!IS_LIVE || !wallet.address) {
       setProfile(null);
@@ -379,6 +451,10 @@ export default function Component() {
   useEffect(() => {
     if (tab === "profile") void loadProfile();
   }, [tab, loadProfile]);
+
+  useEffect(() => {
+    if (tab === "builders" && builders.length === 0) void loadBuilders();
+  }, [tab, loadBuilders]);
 
   const openCount = bounties.filter((b) => b.status === 0).length;
   const completedCount = bounties.filter((b) => b.status === 3).length;
@@ -539,12 +615,15 @@ export default function Component() {
             <Metric label={t("stats.completed")} value={String(completedCount)} tone="success" />
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <Button variant={tab === "browse" ? "default" : "outline"} size="sm" onClick={() => setTab("browse")}>
               {t("tabs.browse")}
             </Button>
             <Button variant={tab === "post" ? "default" : "outline"} size="sm" onClick={() => setTab("post")}>
               {t("tabs.post")}
+            </Button>
+            <Button variant={tab === "builders" ? "default" : "outline"} size="sm" onClick={() => setTab("builders")}>
+              {t("tabs.builders")}
             </Button>
             <Button variant={tab === "profile" ? "default" : "outline"} size="sm" onClick={() => setTab("profile")}>
               {t("tabs.profile")}
@@ -780,6 +859,55 @@ export default function Component() {
                 onClick={() => void submitPost()}
                 disabled={!canWrite}
               />
+            </div>
+          ) : null}
+
+          {tab === "builders" ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                <Button size="sm" variant={!openForWorkOnly ? "default" : "outline"} onClick={() => setOpenForWorkOnly(false)}>
+                  {t("categories.all")}
+                </Button>
+                <Button size="sm" variant={openForWorkOnly ? "default" : "outline"} onClick={() => setOpenForWorkOnly(true)}>
+                  {t("labels.openForWork")}
+                </Button>
+              </div>
+              {buildersLoading ? <Alert>{t("states.loading")}</Alert> : null}
+              {(() => {
+                const visible = builders.filter((addr) => {
+                  const key = addr.toLowerCase();
+                  if (reputations[key]?.blacklisted) return false;
+                  if (openForWorkOnly && !builderProfiles[key]?.available) return false;
+                  return true;
+                });
+                if (!buildersLoading && visible.length === 0) return <Alert>{t("states.noBuilders")}</Alert>;
+                return visible.map((addr) => {
+                  const key = addr.toLowerCase();
+                  const prof = builderProfiles[key];
+                  return (
+                    <div key={addr} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <AddressLink address={addr} explorerBaseUrl={context.explorerBaseUrl} />
+                        {prof?.available ? <StatusBadge tone="success">{t("labels.openForWork")}</StatusBadge> : null}
+                      </div>
+                      <ReputationLine
+                        rep={reputations[key]}
+                        pointsLabel={t("labels.points")}
+                        completedLabel={t("labels.completedCount")}
+                        strikesLabel={t("labels.strikes")}
+                        blacklistedLabel={t("status.cancelled")}
+                      />
+                      {prof?.rate ? <DataRow label={t("labels.rate")} value={prof.rate} /> : null}
+                      {prof?.skills ? <DataRow label={t("labels.skills")} value={prof.skills} /> : null}
+                      <ContactLinks contact={contacts[key]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
+                      {prof?.github ? (
+                        <DataRow label={t("labels.github")} value={<ExternalLink url={`https://github.com/${prof.github.replace(/^@/, "")}`}>{prof.github}</ExternalLink>} />
+                      ) : null}
+                      <LinkOrText value={prof?.portfolio ?? ""} label={t("labels.portfolio")} />
+                    </div>
+                  );
+                });
+              })()}
             </div>
           ) : null}
 
