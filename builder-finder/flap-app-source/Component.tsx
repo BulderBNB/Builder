@@ -180,7 +180,8 @@ export default function Component() {
   const { wallet, i18n, context } = sdk;
   const t = i18n.t;
 
-  const [tab, setTab] = useState<"browse" | "post" | "builders" | "profile">("browse");
+  const [tab, setTab] = useState<"browse" | "post" | "profile">("browse");
+  const [browseView, setBrowseView] = useState<"bounties" | "builders">("bounties");
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -453,8 +454,8 @@ export default function Component() {
   }, [tab, loadProfile]);
 
   useEffect(() => {
-    if (tab === "builders" && builders.length === 0) void loadBuilders();
-  }, [tab, loadBuilders]);
+    if (tab === "browse" && browseView === "builders" && builders.length === 0) void loadBuilders();
+  }, [tab, browseView, loadBuilders]);
 
   const openCount = bounties.filter((b) => b.status === 0).length;
   const completedCount = bounties.filter((b) => b.status === 3).length;
@@ -615,15 +616,12 @@ export default function Component() {
             <Metric label={t("stats.completed")} value={String(completedCount)} tone="success" />
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button variant={tab === "browse" ? "default" : "outline"} size="sm" onClick={() => setTab("browse")}>
               {t("tabs.browse")}
             </Button>
             <Button variant={tab === "post" ? "default" : "outline"} size="sm" onClick={() => setTab("post")}>
               {t("tabs.post")}
-            </Button>
-            <Button variant={tab === "builders" ? "default" : "outline"} size="sm" onClick={() => setTab("builders")}>
-              {t("tabs.builders")}
             </Button>
             <Button variant={tab === "profile" ? "default" : "outline"} size="sm" onClick={() => setTab("profile")}>
               {t("tabs.profile")}
@@ -645,21 +643,32 @@ export default function Component() {
 
           {tab === "browse" ? (
             <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                {(["All", ...CATEGORIES] as const).map((cat) => (
-                  <Button
-                    key={cat}
-                    size="sm"
-                    variant={categoryFilter === cat ? "default" : "outline"}
-                    onClick={() => setCategoryFilter(cat)}
-                  >
-                    {cat === "All" ? t("categories.all") : t(CATEGORY_I18N_KEYS[cat])}
-                  </Button>
-                ))}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant={browseView === "bounties" ? "default" : "outline"} size="sm" onClick={() => setBrowseView("bounties")}>
+                  {t("labels.bounties")}
+                </Button>
+                <Button variant={browseView === "builders" ? "default" : "outline"} size="sm" onClick={() => setBrowseView("builders")}>
+                  {t("tabs.builders")}
+                </Button>
               </div>
-              {loading ? <Alert>{t("states.loading")}</Alert> : null}
-              {!loading && filteredBounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
-              {filteredBounties.map((bounty) => {
+
+              {browseView === "bounties" ? (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(["All", ...CATEGORIES] as const).map((cat) => (
+                      <Button
+                        key={cat}
+                        size="sm"
+                        variant={categoryFilter === cat ? "default" : "outline"}
+                        onClick={() => setCategoryFilter(cat)}
+                      >
+                        {cat === "All" ? t("categories.all") : t(CATEGORY_I18N_KEYS[cat])}
+                      </Button>
+                    ))}
+                  </div>
+                  {loading ? <Alert>{t("states.loading")}</Alert> : null}
+                  {!loading && filteredBounties.length === 0 ? <Alert>{t("states.noBounties")}</Alert> : null}
+                  {filteredBounties.map((bounty) => {
                 const mine = wallet.address?.toLowerCase();
                 const isPoster = mine && bounty.poster.toLowerCase() === mine;
                 const isBuilder = mine && bounty.builder.toLowerCase() === mine;
@@ -821,6 +830,55 @@ export default function Component() {
                   </div>
                 );
               })}
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button size="sm" variant={!openForWorkOnly ? "default" : "outline"} onClick={() => setOpenForWorkOnly(false)}>
+                      {t("categories.all")}
+                    </Button>
+                    <Button size="sm" variant={openForWorkOnly ? "default" : "outline"} onClick={() => setOpenForWorkOnly(true)}>
+                      {t("labels.openForWork")}
+                    </Button>
+                  </div>
+                  {buildersLoading ? <Alert>{t("states.loading")}</Alert> : null}
+                  {(() => {
+                    const visible = builders.filter((addr) => {
+                      const key = addr.toLowerCase();
+                      if (reputations[key]?.blacklisted) return false;
+                      if (openForWorkOnly && !builderProfiles[key]?.available) return false;
+                      return true;
+                    });
+                    if (!buildersLoading && visible.length === 0) return <Alert>{t("states.noBuilders")}</Alert>;
+                    return visible.map((addr) => {
+                      const key = addr.toLowerCase();
+                      const prof = builderProfiles[key];
+                      return (
+                        <div key={addr} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <AddressLink address={addr} explorerBaseUrl={context.explorerBaseUrl} />
+                            {prof?.available ? <StatusBadge tone="success">{t("labels.openForWork")}</StatusBadge> : null}
+                          </div>
+                          <ReputationLine
+                            rep={reputations[key]}
+                            pointsLabel={t("labels.points")}
+                            completedLabel={t("labels.completedCount")}
+                            strikesLabel={t("labels.strikes")}
+                            blacklistedLabel={t("status.cancelled")}
+                          />
+                          {prof?.rate ? <DataRow label={t("labels.rate")} value={prof.rate} /> : null}
+                          {prof?.skills ? <DataRow label={t("labels.skills")} value={prof.skills} /> : null}
+                          <ContactLinks contact={contacts[key]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
+                          {prof?.github ? (
+                            <DataRow label={t("labels.github")} value={<ExternalLink url={`https://github.com/${prof.github.replace(/^@/, "")}`}>{prof.github}</ExternalLink>} />
+                          ) : null}
+                          <LinkOrText value={prof?.portfolio ?? ""} label={t("labels.portfolio")} />
+                        </div>
+                      );
+                    });
+                  })()}
+                </>
+              )}
             </div>
           ) : null}
 
@@ -859,55 +917,6 @@ export default function Component() {
                 onClick={() => void submitPost()}
                 disabled={!canWrite}
               />
-            </div>
-          ) : null}
-
-          {tab === "builders" ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1.5">
-                <Button size="sm" variant={!openForWorkOnly ? "default" : "outline"} onClick={() => setOpenForWorkOnly(false)}>
-                  {t("categories.all")}
-                </Button>
-                <Button size="sm" variant={openForWorkOnly ? "default" : "outline"} onClick={() => setOpenForWorkOnly(true)}>
-                  {t("labels.openForWork")}
-                </Button>
-              </div>
-              {buildersLoading ? <Alert>{t("states.loading")}</Alert> : null}
-              {(() => {
-                const visible = builders.filter((addr) => {
-                  const key = addr.toLowerCase();
-                  if (reputations[key]?.blacklisted) return false;
-                  if (openForWorkOnly && !builderProfiles[key]?.available) return false;
-                  return true;
-                });
-                if (!buildersLoading && visible.length === 0) return <Alert>{t("states.noBuilders")}</Alert>;
-                return visible.map((addr) => {
-                  const key = addr.toLowerCase();
-                  const prof = builderProfiles[key];
-                  return (
-                    <div key={addr} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <AddressLink address={addr} explorerBaseUrl={context.explorerBaseUrl} />
-                        {prof?.available ? <StatusBadge tone="success">{t("labels.openForWork")}</StatusBadge> : null}
-                      </div>
-                      <ReputationLine
-                        rep={reputations[key]}
-                        pointsLabel={t("labels.points")}
-                        completedLabel={t("labels.completedCount")}
-                        strikesLabel={t("labels.strikes")}
-                        blacklistedLabel={t("status.cancelled")}
-                      />
-                      {prof?.rate ? <DataRow label={t("labels.rate")} value={prof.rate} /> : null}
-                      {prof?.skills ? <DataRow label={t("labels.skills")} value={prof.skills} /> : null}
-                      <ContactLinks contact={contacts[key]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
-                      {prof?.github ? (
-                        <DataRow label={t("labels.github")} value={<ExternalLink url={`https://github.com/${prof.github.replace(/^@/, "")}`}>{prof.github}</ExternalLink>} />
-                      ) : null}
-                      <LinkOrText value={prof?.portfolio ?? ""} label={t("labels.portfolio")} />
-                    </div>
-                  );
-                });
-              })()}
             </div>
           ) : null}
 
