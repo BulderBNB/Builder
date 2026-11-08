@@ -31,10 +31,6 @@ const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
 const LOGO_CID = "bafkreiejjzu5jygio3cefp535cd2licev5hqjm2ayi3psnawuc4di6ywb4";
-// TEMPORARY — Flap's IpfsImage only resolves CIDs pinned to Flap's own Pinata account, not a
-// developer's own Pinata. This flips on a one-time admin tool to upload the logo through
-// sdk.uploadImage() so we get a CID that actually resolves, then gets removed.
-const SHOW_LOGO_UPLOAD_TOOL = true;
 
 const MAX_BOUNTY_DURATION_SECONDS = 30 * 24 * 3600;
 
@@ -203,10 +199,6 @@ export default function Component() {
   const fetchedContactsRef = useRef<Set<string>>(new Set());
   const fetchedReportsRef = useRef<Set<string>>(new Set());
   const fetchedReputationRef = useRef<Set<string>>(new Set());
-
-  const [logoUploadBusy, setLogoUploadBusy] = useState(false);
-  const [logoUploadCid, setLogoUploadCid] = useState<string | null>(null);
-  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
 
   const [builders, setBuilders] = useState<`0x${string}`[]>([]);
   const [buildersLoading, setBuildersLoading] = useState(false);
@@ -619,20 +611,6 @@ export default function Component() {
     setApplicantsOpenId(null);
   }
 
-  async function uploadLogoFile(file: File) {
-    setLogoUploadBusy(true);
-    setLogoUploadError(null);
-    setLogoUploadCid(null);
-    try {
-      const result = await sdk.uploadImage(file);
-      setLogoUploadCid(result.cid);
-    } catch (err) {
-      setLogoUploadError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLogoUploadBusy(false);
-    }
-  }
-
   return (
     <div className="min-h-screen w-full space-y-4 p-4 sm:p-6">
       <Card>
@@ -681,31 +659,6 @@ export default function Component() {
             </Button>
           </div>
 
-          {SHOW_LOGO_UPLOAD_TOOL ? (
-            <Alert tone="warning">
-              <div className="space-y-2">
-                <p className="text-sm">
-                  One-time admin tool: pick the logo image file to pin it through Flap&apos;s own gateway, then copy the CID below and send it back.
-                </p>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/gif,image/webp"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadLogoFile(file);
-                  }}
-                />
-                {logoUploadBusy ? <p className="text-xs text-white/60">Uploading…</p> : null}
-                {logoUploadCid ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <code className="break-all text-xs">{logoUploadCid}</code>
-                    <CopyButton value={logoUploadCid} />
-                  </div>
-                ) : null}
-                {logoUploadError ? <p className="text-xs text-red-400">{logoUploadError}</p> : null}
-              </div>
-            </Alert>
-          ) : null}
           {!IS_LIVE ? <Alert tone="warning">{t("states.notLiveYet")}</Alert> : null}
           {wallet.isConnected && wallet.isWrongNetwork ? (
             <Alert tone="warning">
