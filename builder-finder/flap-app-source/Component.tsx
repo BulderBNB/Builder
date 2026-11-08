@@ -26,10 +26,7 @@ import { BuilderBountiesAbi } from "./VaultABI";
 const CHAIN_ID = 97;
 // Pending the v2 redeploy — paste the new BuilderBounties.sol address here once it's live on
 // BSC Testnet again. Until then every read returns an empty list and every write stays disabled.
-// Pending the registry redeploy — the currently-live 0x3db14f0f... contract predates
-// registeredBuilderCount/registeredBuilderAt, so this stays at the zero address (app shows
-// "not live yet") until a fresh deploy of the current contracts/BuilderBounties.sol goes out.
-const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+const CONTRACT_ADDRESS = "0x964881cc7c76bbe110cf5197f31fac4187dc575f" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
