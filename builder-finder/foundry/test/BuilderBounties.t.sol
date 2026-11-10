@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {BuilderBounties} from "../src/BuilderBounties.sol";
 
 contract BuilderBountiesTest is Test {
@@ -13,6 +14,19 @@ contract BuilderBountiesTest is Test {
     address builder2 = address(0xB0B2);
     address builder3 = address(0xB0B3);
     address stranger = address(0x5717A116E);
+
+    bytes32 constant NS_BUILDER_POINTS = "builderPoints";
+    bytes32 constant NS_BOUNTY = "bounty";
+    bytes32 constant NS_ACTIVITY = "activity";
+
+    // Re-declared locally (same name/types/indexed-ness as FlapSharedIndexerV1's events) so this
+    // test contract can `emit` the expected shape for vm.expectEmit — log matching is by the
+    // event's signature hash and data bytes, not by which contract declared it.
+    event FlapSharedIndexerAddrUint(bytes32 ns, address key, uint256 value, string data);
+    event FlapSharedIndexerFeed(
+        bytes32 ns, uint256 id, uint256 seq, address actor, address related, uint256 value, string data
+    );
+    event FlapSharedIndexerLog(bytes32 ns, uint256 id, address actor, address related, uint256 amount, uint256 extra);
 
     function setUp() public {
         bounties = new BuilderBounties();
@@ -43,12 +57,36 @@ contract BuilderBountiesTest is Test {
         id = bounties.postBounty("Build a widget", "https://example.com/brief", "0.5 BNB", "dev", deadline);
     }
 
+    /// @dev Select flow now requires the builder to have applied first (R1 fix) — this helper
+    ///      does both steps so existing call sites don't have to repeat it.
+    function _selected(uint64 deadline) internal returns (uint256 id) {
+        id = _postBounty(poster, deadline);
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+        vm.prank(poster);
+        bounties.selectBuilder(id, builder);
+    }
+
+    function _approved(uint64 deadline) internal returns (uint256 id) {
+        id = _selected(deadline);
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+        vm.prank(poster);
+        bounties.approveBounty(id);
+    }
+
+    uint64 constant DEFAULT_DEADLINE_OFFSET = 1 days;
+
+    function _defaultDeadline() internal view returns (uint64) {
+        return uint64(block.timestamp) + DEFAULT_DEADLINE_OFFSET;
+    }
+
     // ---------------------------------------------------------------------
     // postBounty
     // ---------------------------------------------------------------------
 
     function test_postBounty_success() public {
-        uint64 deadline = uint64(block.timestamp + 1 days);
+        uint64 deadline = _defaultDeadline();
         uint256 id = _postBounty(poster, deadline);
 
         assertEq(id, 0);
@@ -78,7 +116,7 @@ contract BuilderBountiesTest is Test {
     function test_postBounty_revertsWithoutContact() public {
         vm.prank(stranger);
         vm.expectRevert(bytes("set your X or Telegram first"));
-        bounties.postBounty("No contact", "", "", "dev", uint64(block.timestamp + 1 days));
+        bounties.postBounty("No contact", "", "", "dev", _defaultDeadline());
     }
 
     function test_postBounty_revertsIfPosterBlacklisted() public {
@@ -86,20 +124,27 @@ contract BuilderBountiesTest is Test {
 
         vm.prank(poster);
         vm.expectRevert(bytes("poster blacklisted"));
-        bounties.postBounty("Blocked", "", "", "dev", uint64(block.timestamp + 1 days));
+        bounties.postBounty("Blocked", "", "", "dev", _defaultDeadline());
     }
 
     function test_postBounty_revertsOnEmptyTitle() public {
         vm.prank(poster);
         vm.expectRevert(bytes("bad title"));
-        bounties.postBounty("", "", "", "dev", uint64(block.timestamp + 1 days));
+        bounties.postBounty("", "", "", "dev", _defaultDeadline());
     }
 
     function test_postBounty_revertsOnPastDeadline() public {
-        vm.warp(1000);
+        vm.warp(1_000_000);
         vm.prank(poster);
-        vm.expectRevert(bytes("deadline already passed"));
+        vm.expectRevert(bytes("deadline too soon"));
         bounties.postBounty("Too late", "", "", "dev", uint64(block.timestamp - 1));
+    }
+
+    function test_postBounty_revertsOnDeadlineTooSoon() public {
+        // R1 fix: a deadline under 24h is rejected outright, even for a willing applicant.
+        vm.prank(poster);
+        vm.expectRevert(bytes("deadline too soon"));
+        bounties.postBounty("Too soon", "", "", "dev", uint64(block.timestamp + 1 hours));
     }
 
     function test_postBounty_revertsOnDeadlineTooFarOut() public {
@@ -108,12 +153,35 @@ contract BuilderBountiesTest is Test {
         bounties.postBounty("Too far", "", "", "dev", uint64(block.timestamp + 31 days));
     }
 
+    function test_postBounty_revertsOnRewardLabelTooLong() public {
+        string memory tooLong = _repeat("a", 81);
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("reward text too long"));
+        bounties.postBounty("Title", "", tooLong, "dev", _defaultDeadline());
+    }
+
+    function test_postBounty_revertsOnCategoryTooLong() public {
+        string memory tooLong = _repeat("a", 81);
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("category too long"));
+        bounties.postBounty("Title", "", "0.5 BNB", tooLong, _defaultDeadline());
+    }
+
+    function test_postBounty_emitsFsiFeedEvent() public {
+        vm.expectEmit(false, false, false, true);
+        emit FlapSharedIndexerFeed(NS_BOUNTY, 0, 0, poster, address(0), block.timestamp, "Build a widget");
+
+        _postBounty(poster, _defaultDeadline());
+    }
+
     // ---------------------------------------------------------------------
     // cancelBounty
     // ---------------------------------------------------------------------
 
     function test_cancelBounty_success() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(poster);
         bounties.cancelBounty(id);
@@ -123,7 +191,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_cancelBounty_revertsIfNotPoster() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(stranger);
         vm.expectRevert(bytes("not your bounty"));
@@ -135,7 +203,7 @@ contract BuilderBountiesTest is Test {
     // ---------------------------------------------------------------------
 
     function test_applyToBounty_success() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(builder);
         bounties.applyToBounty(id);
@@ -147,7 +215,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsIfAlreadyApplied() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(builder);
         bounties.applyToBounty(id);
@@ -158,7 +226,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsForPosterOwnBounty() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(poster);
         vm.expectRevert(bytes("cannot apply to your own bounty"));
@@ -166,7 +234,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsIfBuilderBlacklisted() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
         bounties.setBuilderBlacklisted(builder, true);
 
         vm.prank(builder);
@@ -175,7 +243,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsWithoutContact() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(stranger);
         vm.expectRevert(bytes("set your X or Telegram first"));
@@ -183,7 +251,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsAfterDeadline() public {
-        uint64 deadline = uint64(block.timestamp + 1 days);
+        uint64 deadline = _defaultDeadline();
         uint256 id = _postBounty(poster, deadline);
 
         vm.warp(deadline + 1);
@@ -193,7 +261,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsWhenNotOpen() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
         vm.prank(poster);
         bounties.cancelBounty(id);
 
@@ -203,7 +271,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_applyToBounty_revertsOnTooManyApplicants() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         for (uint256 i = 0; i < 30; i++) {
             address applicant = address(uint160(0x9000 + i));
@@ -224,7 +292,7 @@ contract BuilderBountiesTest is Test {
     // ---------------------------------------------------------------------
 
     function test_selectBuilder_success() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(builder);
         bounties.applyToBounty(id);
@@ -238,7 +306,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_selectBuilder_revertsIfNotPoster() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(stranger);
         vm.expectRevert(bytes("not your bounty"));
@@ -246,15 +314,28 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_selectBuilder_revertsForSelfSelect() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.prank(poster);
         vm.expectRevert(bytes("bad builder"));
         bounties.selectBuilder(id, poster);
     }
 
+    function test_selectBuilder_revertsIfPosterBlacklisted() public {
+        // O3 fix: a poster blacklisted after posting can't select on a bounty they already hold.
+        uint256 id = _postBounty(poster, _defaultDeadline());
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+
+        bounties.setPosterBlacklisted(poster, true);
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("poster blacklisted"));
+        bounties.selectBuilder(id, builder);
+    }
+
     function test_selectBuilder_revertsIfBuilderBlacklisted() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
         bounties.setBuilderBlacklisted(builder, true);
 
         vm.prank(poster);
@@ -262,17 +343,46 @@ contract BuilderBountiesTest is Test {
         bounties.selectBuilder(id, builder);
     }
 
+    function test_selectBuilder_revertsIfBuilderNeverApplied() public {
+        // R1 fix: having contact info is not enough — the builder must have applied.
+        uint256 id = _postBounty(poster, _defaultDeadline());
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("builder must apply first"));
+        bounties.selectBuilder(id, builder);
+    }
+
     function test_selectBuilder_revertsIfBuilderHasNoContact() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        // Builder applied (so had contact at the time), then the owner wiped it — selection
+        // must still be blocked because _hasContact is checked live, not just at apply time.
+        uint256 id = _postBounty(poster, _defaultDeadline());
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+        bounties.clearProfile(builder);
 
         vm.prank(poster);
         vm.expectRevert(bytes("builder has no contact info set"));
-        bounties.selectBuilder(id, stranger);
+        bounties.selectBuilder(id, builder);
+    }
+
+    function test_griefBlacklist_noLongerPossible() public {
+        // R1: the original attack — select a victim who never applied, let a short deadline
+        // expire, repeat to rack up strikes with no consent from the victim at all. Confirm the
+        // very first step is now rejected.
+        uint256 id = _postBounty(poster, _defaultDeadline());
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("builder must apply first"));
+        bounties.selectBuilder(id, builder);
+
+        assertEq(bounties.builderMissedStrikes(builder), 0);
+        assertFalse(bounties.builderBlacklisted(builder));
     }
 
     function test_releaseBounty_reopensForAnotherSelection() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
-
+        uint256 id = _postBounty(poster, _defaultDeadline());
+        vm.prank(builder);
+        bounties.applyToBounty(id);
         vm.prank(poster);
         bounties.selectBuilder(id, builder);
 
@@ -283,16 +393,20 @@ contract BuilderBountiesTest is Test {
         assertEq(bBuilder, address(0));
         assertEq(uint8(status), uint8(BuilderBounties.Status.Open));
 
+        vm.prank(builder2);
+        bounties.applyToBounty(id);
         vm.prank(poster);
         bounties.selectBuilder(id, builder2);
+
         (, address bBuilder2, , , , , , BuilderBounties.Status status2, , ) = bounties.bounties(id);
         assertEq(bBuilder2, builder2);
         assertEq(uint8(status2), uint8(BuilderBounties.Status.Claimed));
     }
 
     function test_releaseBounty_revertsIfNotTheClaimant() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
-
+        uint256 id = _postBounty(poster, _defaultDeadline());
+        vm.prank(builder);
+        bounties.applyToBounty(id);
         vm.prank(poster);
         bounties.selectBuilder(id, builder);
 
@@ -305,14 +419,8 @@ contract BuilderBountiesTest is Test {
     // submitProof / approveBounty
     // ---------------------------------------------------------------------
 
-    function _selected(uint64 deadline) internal returns (uint256 id) {
-        id = _postBounty(poster, deadline);
-        vm.prank(poster);
-        bounties.selectBuilder(id, builder);
-    }
-
     function test_submitProof_success() public {
-        uint256 id = _selected(uint64(block.timestamp + 1 days));
+        uint256 id = _selected(_defaultDeadline());
 
         vm.prank(builder);
         bounties.submitProof(id, "https://github.com/example/pr/1");
@@ -323,15 +431,25 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_submitProof_revertsIfNotClaimant() public {
-        uint256 id = _selected(uint64(block.timestamp + 1 days));
+        uint256 id = _selected(_defaultDeadline());
 
         vm.prank(builder2);
         vm.expectRevert(bytes("not your claim"));
         bounties.submitProof(id, "https://example.com/proof");
     }
 
+    function test_submitProof_revertsIfBuilderBlacklisted() public {
+        // O3 fix: a builder blacklisted after being selected can't advance the bounty further.
+        uint256 id = _selected(_defaultDeadline());
+        bounties.setBuilderBlacklisted(builder, true);
+
+        vm.prank(builder);
+        vm.expectRevert(bytes("builder blacklisted"));
+        bounties.submitProof(id, "https://example.com/proof");
+    }
+
     function test_approveBounty_awardsPointsAndCompletion() public {
-        uint256 id = _selected(uint64(block.timestamp + 1 days));
+        uint256 id = _selected(_defaultDeadline());
 
         vm.prank(builder);
         bounties.submitProof(id, "https://example.com/proof");
@@ -346,10 +464,63 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_approveBounty_revertsIfNotSubmitted() public {
-        uint256 id = _selected(uint64(block.timestamp + 1 days));
+        uint256 id = _selected(_defaultDeadline());
 
         vm.prank(poster);
         vm.expectRevert(bytes("not submitted"));
+        bounties.approveBounty(id);
+    }
+
+    function test_approveBounty_revertsIfPosterBlacklisted() public {
+        uint256 id = _selected(_defaultDeadline());
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+
+        bounties.setPosterBlacklisted(poster, true);
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("poster blacklisted"));
+        bounties.approveBounty(id);
+    }
+
+    function test_approveBounty_revertsIfBuilderBlacklisted() public {
+        uint256 id = _selected(_defaultDeadline());
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+
+        bounties.setBuilderBlacklisted(builder, true);
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("builder blacklisted"));
+        bounties.approveBounty(id);
+    }
+
+    function test_approveBounty_succeedsLongAfterDeadline() public {
+        // O1: approveBounty has no deadline cutoff — the poster keeps unlimited time to review a
+        // Submitted bounty, since markExpired can no longer touch it.
+        uint64 deadline = _defaultDeadline();
+        uint256 id = _selected(deadline);
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+
+        vm.warp(deadline + 365 days);
+
+        vm.prank(poster);
+        bounties.approveBounty(id);
+
+        assertEq(bounties.builderPoints(builder), bounties.POINTS_PER_BOUNTY());
+        assertEq(bounties.builderMissedStrikes(builder), 0);
+    }
+
+    function test_approveBounty_emitsFsiPointsAndActivity() public {
+        uint256 id = _selected(_defaultDeadline());
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+
+        vm.expectEmit(false, false, false, true);
+        emit FlapSharedIndexerAddrUint(NS_BUILDER_POINTS, builder, bounties.POINTS_PER_BOUNTY(), "");
+
+        vm.prank(poster);
         bounties.approveBounty(id);
     }
 
@@ -358,14 +529,14 @@ contract BuilderBountiesTest is Test {
     // ---------------------------------------------------------------------
 
     function test_markExpired_revertsBeforeDeadline() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         vm.expectRevert(bytes("not past deadline yet"));
         bounties.markExpired(id);
     }
 
     function test_markExpired_claimedBuilderTakesAStrike() public {
-        uint64 deadline = uint64(block.timestamp + 1 days);
+        uint64 deadline = _defaultDeadline();
         uint256 id = _selected(deadline);
 
         vm.warp(deadline + 1);
@@ -378,7 +549,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_markExpired_openBountyExpiresWithNoStrike() public {
-        uint64 deadline = uint64(block.timestamp + 1 days);
+        uint64 deadline = _defaultDeadline();
         uint256 id = _postBounty(poster, deadline);
 
         vm.warp(deadline + 1);
@@ -390,7 +561,7 @@ contract BuilderBountiesTest is Test {
 
     function test_markExpired_threeStrikesAutoBlacklists() public {
         for (uint256 i = 0; i < 3; i++) {
-            uint64 deadline = uint64(block.timestamp + 1 days);
+            uint64 deadline = _defaultDeadline();
             uint256 id = _selected(deadline);
             vm.warp(deadline + 1);
             bounties.markExpired(id);
@@ -401,7 +572,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_markExpired_revertsIfAlreadyFinalized() public {
-        uint64 deadline = uint64(block.timestamp + 1 days);
+        uint64 deadline = _defaultDeadline();
         uint256 id = _postBounty(poster, deadline);
 
         vm.prank(poster);
@@ -412,20 +583,49 @@ contract BuilderBountiesTest is Test {
         bounties.markExpired(id);
     }
 
+    function test_markExpired_submittedBountyNeverStrikes() public {
+        // O1 fix: the builder delivered on time; a poster who sits on the approval must not be
+        // able to turn that into a strike by calling markExpired once the deadline passes.
+        uint64 deadline = _defaultDeadline();
+        uint256 id = _selected(deadline);
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+
+        vm.warp(deadline + 1);
+        vm.expectRevert(bytes("already finalized"));
+        bounties.markExpired(id);
+
+        (, , , , , , , BuilderBounties.Status status, , ) = bounties.bounties(id);
+        assertEq(uint8(status), uint8(BuilderBounties.Status.Submitted));
+        assertEq(bounties.builderMissedStrikes(builder), 0);
+        assertFalse(bounties.builderBlacklisted(builder));
+    }
+
+    function test_markExpired_cannotFrontrunALateApproval() public {
+        // O1 fix: proves the frontrun the auditor described no longer works — racing markExpired
+        // against a late approveBounty can no longer make the approval fail.
+        uint64 deadline = _defaultDeadline();
+        uint256 id = _selected(deadline);
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/proof");
+
+        vm.warp(deadline + 1);
+        vm.expectRevert(bytes("already finalized"));
+        bounties.markExpired(id);
+
+        vm.prank(poster);
+        bounties.approveBounty(id);
+
+        (, , , , , , , BuilderBounties.Status status, , ) = bounties.bounties(id);
+        assertEq(uint8(status), uint8(BuilderBounties.Status.Approved));
+    }
+
     // ---------------------------------------------------------------------
     // reportNonPayment — one-shot replay guard
     // ---------------------------------------------------------------------
 
-    function _approved(uint64 deadline) internal returns (uint256 id) {
-        id = _selected(deadline);
-        vm.prank(builder);
-        bounties.submitProof(id, "https://example.com/proof");
-        vm.prank(poster);
-        bounties.approveBounty(id);
-    }
-
     function test_reportNonPayment_success() public {
-        uint256 id = _approved(uint64(block.timestamp + 1 days));
+        uint256 id = _approved(_defaultDeadline());
 
         vm.prank(builder);
         bounties.reportNonPayment(id);
@@ -436,7 +636,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_reportNonPayment_revertsOnReplay() public {
-        uint256 id = _approved(uint64(block.timestamp + 1 days));
+        uint256 id = _approved(_defaultDeadline());
 
         vm.prank(builder);
         bounties.reportNonPayment(id);
@@ -447,7 +647,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_reportNonPayment_revertsIfNotApproved() public {
-        uint256 id = _selected(uint64(block.timestamp + 1 days));
+        uint256 id = _selected(_defaultDeadline());
 
         vm.prank(builder);
         vm.expectRevert(bytes("bounty not approved"));
@@ -455,10 +655,20 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_reportNonPayment_revertsIfNotClaimant() public {
-        uint256 id = _approved(uint64(block.timestamp + 1 days));
+        uint256 id = _approved(_defaultDeadline());
 
         vm.prank(builder2);
         vm.expectRevert(bytes("not your claim"));
+        bounties.reportNonPayment(id);
+    }
+
+    function test_reportNonPayment_emitsFsiActivityLog() public {
+        uint256 id = _approved(_defaultDeadline());
+
+        vm.expectEmit(false, false, false, true);
+        emit FlapSharedIndexerLog(NS_ACTIVITY, id, builder, poster, 0, 1);
+
+        vm.prank(builder);
         bounties.reportNonPayment(id);
     }
 
@@ -503,6 +713,63 @@ contract BuilderBountiesTest is Test {
         );
     }
 
+    function test_setProfile_revertsIfBuilderBlacklisted() public {
+        bounties.setBuilderBlacklisted(builder, true);
+
+        vm.prank(builder);
+        vm.expectRevert(bytes("blacklisted"));
+        bounties.setProfile(
+            BuilderBounties.ProfileInput({
+                available: true,
+                rate: "",
+                skills: "",
+                x: "new_handle",
+                tg: "",
+                github: "",
+                portfolio: ""
+            })
+        );
+    }
+
+    function test_setProfile_revertsIfPosterBlacklisted() public {
+        bounties.setPosterBlacklisted(poster, true);
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("blacklisted"));
+        bounties.setProfile(
+            BuilderBounties.ProfileInput({
+                available: true,
+                rate: "",
+                skills: "",
+                x: "new_handle",
+                tg: "",
+                github: "",
+                portfolio: ""
+            })
+        );
+    }
+
+    function test_clearProfile_doesNotBypassBlacklistForReprofiling() public {
+        // O3 fix: clearing a blacklisted address's profile must not let them immediately refill
+        // it — setProfile itself now checks the blacklist, independent of clearProfile.
+        bounties.setBuilderBlacklisted(builder, true);
+        bounties.clearProfile(builder);
+
+        vm.prank(builder);
+        vm.expectRevert(bytes("blacklisted"));
+        bounties.setProfile(
+            BuilderBounties.ProfileInput({
+                available: true,
+                rate: "",
+                skills: "",
+                x: "back_again",
+                tg: "",
+                github: "",
+                portfolio: ""
+            })
+        );
+    }
+
     function _repeat(string memory ch, uint256 n) internal pure returns (string memory) {
         bytes memory out = new bytes(n);
         bytes memory c = bytes(ch);
@@ -538,7 +805,7 @@ contract BuilderBountiesTest is Test {
     }
 
     function test_removeBounty_forceCancelsRegardlessOfStatus() public {
-        uint256 id = _selected(uint64(block.timestamp + 1 days));
+        uint256 id = _selected(_defaultDeadline());
 
         bounties.removeBounty(id);
 
@@ -546,8 +813,19 @@ contract BuilderBountiesTest is Test {
         assertEq(uint8(status), uint8(BuilderBounties.Status.Cancelled));
     }
 
+    function test_removeBounty_revertsOnDoubleRemoval() public {
+        // O2 fix: calling removeBounty twice must not be possible (it would otherwise reuse the
+        // same FSI seq number for two different events).
+        uint256 id = _postBounty(poster, _defaultDeadline());
+
+        bounties.removeBounty(id);
+
+        vm.expectRevert(bytes("already cancelled"));
+        bounties.removeBounty(id);
+    }
+
     function test_clearProfile_wipesContactAndBlocksFurtherActions() public {
-        uint256 id = _postBounty(poster, uint64(block.timestamp + 1 days));
+        uint256 id = _postBounty(poster, _defaultDeadline());
 
         bounties.clearProfile(builder);
 
@@ -575,5 +853,58 @@ contract BuilderBountiesTest is Test {
     function test_setOwner_revertsOnZeroAddress() public {
         vm.expectRevert(bytes("zero address"));
         bounties.setOwner(address(0));
+    }
+
+    // ---------------------------------------------------------------------
+    // FSI sequence uniqueness (O2 fix)
+    // ---------------------------------------------------------------------
+
+    function test_seqNumbersAreUniquePerBounty() public {
+        uint256 id = _postBounty(poster, _defaultDeadline());
+
+        vm.recordLogs();
+
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+        vm.prank(poster);
+        bounties.selectBuilder(id, builder); // seq 1 (seq 0 was postBounty, outside the recorder)
+        vm.prank(builder);
+        bounties.releaseBounty(id); // seq 2
+
+        vm.prank(builder2);
+        bounties.applyToBounty(id);
+        vm.prank(poster);
+        bounties.selectBuilder(id, builder2); // seq 3 — previously this repeated seq 2
+        vm.prank(builder2);
+        bounties.releaseBounty(id); // seq 4 — previously this repeated seq 7
+
+        bytes32 feedSig = keccak256("FlapSharedIndexerFeed(bytes32,uint256,uint256,address,address,uint256,string)");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        uint256[] memory seen = new uint256[](entries.length);
+        uint256 count = 0;
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (entries[i].topics.length > 0 && entries[i].topics[0] == feedSig) {
+                (, , uint256 seq, , , , ) =
+                    abi.decode(entries[i].data, (bytes32, uint256, uint256, address, address, uint256, string));
+                for (uint256 j = 0; j < count; j++) {
+                    assertTrue(seen[j] != seq, "duplicate seq found for the same bounty id");
+                }
+                seen[count] = seq;
+                count++;
+            }
+        }
+
+        assertEq(count, 4, "expected 4 FSI feed events (select, release, select, release)");
+    }
+
+    function test_seqNumbersAreUniqueAcrossRepeatedRemoval() public {
+        // Covers the second half of O2: removeBounty can no longer fire twice, so it can no
+        // longer emit the same seq value twice either (enforced via the revert tested above).
+        uint256 id = _postBounty(poster, _defaultDeadline());
+        bounties.removeBounty(id);
+
+        vm.expectRevert(bytes("already cancelled"));
+        bounties.removeBounty(id);
     }
 }

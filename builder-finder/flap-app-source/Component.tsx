@@ -892,6 +892,7 @@ export default function Component() {
                       {t("labels.openForWork")}
                     </Button>
                   </div>
+                  <p className="text-xs text-white/42">{t("states.pointsUnverified")}</p>
                   {buildersLoading ? <Alert>{t("states.loading")}</Alert> : null}
                   {(() => {
                     const visible = builders.filter((addr) => {
@@ -1004,6 +1005,7 @@ export default function Component() {
                     <Metric label={t("labels.strikes")} value={String(profile?.strikes ?? 0n)} tone={profile?.strikes ? "warning" : "default"} />
                     <Metric label={t("labels.status")} value={profile?.blacklisted ? t("status.cancelled") : "OK"} tone={profile?.blacklisted ? "warning" : "success"} />
                   </div>
+                  <p className="text-xs text-white/42">{t("states.pointsUnverified")}</p>
 
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm text-white/56">{wallet.address}</span>

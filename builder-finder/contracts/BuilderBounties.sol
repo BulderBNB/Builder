@@ -12,14 +12,22 @@ import {FlapSharedIndexerV1} from "./FlapSharedIndexerV1.sol";
 /// @dev Trust model:
 ///      - Deadline misses are objective (block.timestamp vs. a stored deadline), so missing one
 ///        auto-strikes the builder, and repeated strikes auto-blacklist them. No dispute needed —
-///        the chain itself is the referee.
+///        the chain itself is the referee. This only applies while a bounty is still Open or
+///        Claimed — once a builder has submitted proof on time, the ball is in the poster's court
+///        and a strike is never fair, so `markExpired` can no longer touch a Submitted bounty.
+///        `approveBounty` itself has no deadline cutoff, so the poster can still review and
+///        approve whenever they get to it.
 ///      - Non-payment is NOT objective — we never see money move, so a report is just one wallet's
 ///        claim about another. One report per bounty, logged permanently and publicly, but never
 ///        auto-blacklists a poster; that's an owner-reviewed action (see `setPosterBlacklisted`),
 ///        so one bad-faith report can't unilaterally destroy someone's reputation.
-///      - Claiming is apply-then-select, not first-come-first-served: any interested builder can
-///        apply for free (no commitment), the poster picks one from the list. A selected builder
-///        can voluntarily release the claim back to Open with no penalty if the deal falls through.
+///      - Claiming is apply-then-select, not first-come-first-served: a builder must apply before
+///        they can be selected, so nobody can be assigned (and later struck) for a bounty they
+///        never agreed to. The poster picks one from the applicant list. A selected builder can
+///        voluntarily release the claim back to Open with no penalty if the deal falls through.
+///      - Blacklisting is enforced everywhere it matters, not just at entry points: a blacklisted
+///        builder or poster can't touch `setProfile`, and can't progress a bounty they already
+///        hold via `selectBuilder`/`submitProof`/`approveBounty` either.
 contract BuilderBounties is FlapSharedIndexerV1 {
     bytes32 constant NS_BUILDER_POINTS = "builderPoints"; // Template A -> top-builders leaderboard
     bytes32 constant NS_BOUNTY = "bounty";                // Template L -> full lifecycle feed per bounty
@@ -44,7 +52,10 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     uint256 public constant STRIKES_TO_AUTO_BLACKLIST = 3;
     uint256 public constant MAX_TITLE_LEN = 120;
     uint256 public constant MAX_LINK_LEN = 300;
+    uint256 public constant MAX_REWARD_LABEL_LEN = 80;
+    uint256 public constant MAX_CATEGORY_LEN = 80;
     uint256 public constant MAX_PROFILE_FIELD_LEN = 160;
+    uint256 public constant MIN_BOUNTY_DURATION = 24 hours;
     uint256 public constant MAX_BOUNTY_DURATION = 30 days;
     uint256 public constant MAX_APPLICANTS = 30;
 
@@ -55,6 +66,18 @@ contract BuilderBounties is FlapSharedIndexerV1 {
 
     mapping(uint256 => address[]) private _applicants;
     mapping(uint256 => mapping(address => bool)) public hasApplied;
+
+    /// @notice Per-bounty FSI (Template L) sequence counter — every `_fsiAppend` call for a given
+    ///         bounty id must use a value that's never been used before for that id. A loop like
+    ///         release -> reselect -> release can hit the same lifecycle stage more than once, so
+    ///         the stage itself can't double as the sequence number; this counter guarantees
+    ///         uniqueness regardless of how many times a stage repeats. The event's `data` string
+    ///         still carries which stage it was ("selected", "released", etc.).
+    mapping(uint256 => uint256) private _bountySeq;
+
+    function _nextSeq(uint256 id) private returns (uint256) {
+        return _bountySeq[id]++;
+    }
 
     mapping(address => uint256) public builderPoints;
     mapping(address => uint256) public buildersCompleted;
@@ -133,7 +156,9 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         require(_hasContact(msg.sender), "set your X or Telegram first");
         require(bytes(title).length > 0 && bytes(title).length <= MAX_TITLE_LEN, "bad title");
         require(bytes(briefLink).length <= MAX_LINK_LEN, "brief link too long");
-        require(deadline > block.timestamp, "deadline already passed");
+        require(bytes(rewardLabel).length <= MAX_REWARD_LABEL_LEN, "reward text too long");
+        require(bytes(category).length <= MAX_CATEGORY_LEN, "category too long");
+        require(deadline >= block.timestamp + MIN_BOUNTY_DURATION, "deadline too soon");
         require(deadline <= block.timestamp + MAX_BOUNTY_DURATION, "deadline too far out");
 
         id = bountyCount++;
@@ -150,7 +175,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
             nonPaymentReported: false
         });
 
-        _fsiAppend(NS_BOUNTY, id, 0, msg.sender, address(0), title);
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, address(0), title);
         emit BountyPosted(id, msg.sender, title);
     }
 
@@ -161,7 +186,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         require(b.status == Status.Open, "not open");
 
         b.status = Status.Cancelled;
-        _fsiAppend(NS_BOUNTY, id, 1, msg.sender, address(0), "cancelled");
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, address(0), "cancelled");
         emit BountyCancelled(id, msg.sender);
     }
 
@@ -190,22 +215,25 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         return _applicants[id];
     }
 
-    /// @notice Poster picks who gets the job. The chosen address doesn't have to be someone who
-    ///         called `applyToBounty` — the poster can assign it directly to anyone eligible.
-    ///         Contact details are exchanged off-platform from here.
+    /// @notice Poster picks who gets the job, from among the addresses that applied. Requiring a
+    ///         prior `applyToBounty` call means nobody can be assigned (and later struck for a
+    ///         missed deadline) without having agreed to take the job themselves. Contact details
+    ///         are exchanged off-platform from here.
     function selectBuilder(uint256 id, address builder) external {
         Bounty storage b = bounties[id];
         require(b.poster == msg.sender, "not your bounty");
+        require(!posterBlacklisted[msg.sender], "poster blacklisted");
         require(b.status == Status.Open, "not open");
         require(block.timestamp < b.deadline, "deadline passed");
         require(builder != address(0) && builder != msg.sender, "bad builder");
         require(!builderBlacklisted[builder], "builder blacklisted");
+        require(hasApplied[id][builder], "builder must apply first");
         require(_hasContact(builder), "builder has no contact info set");
 
         b.builder = builder;
         b.status = Status.Claimed;
 
-        _fsiAppend(NS_BOUNTY, id, 2, builder, b.poster, "selected");
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), builder, b.poster, "selected");
         emit BountySelected(id, msg.sender, builder);
     }
 
@@ -220,7 +248,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         b.builder = address(0);
         b.status = Status.Open;
 
-        _fsiAppend(NS_BOUNTY, id, 7, released, b.poster, "released");
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), released, b.poster, "released");
         emit BountyReleased(id, released);
     }
 
@@ -233,13 +261,14 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     function submitProof(uint256 id, string calldata proofLink) external {
         Bounty storage b = bounties[id];
         require(b.builder == msg.sender, "not your claim");
+        require(!builderBlacklisted[msg.sender], "builder blacklisted");
         require(b.status == Status.Claimed, "not claimed");
         require(bytes(proofLink).length > 0 && bytes(proofLink).length <= MAX_LINK_LEN, "bad link");
 
         b.proofLink = proofLink;
         b.status = Status.Submitted;
 
-        _fsiAppend(NS_BOUNTY, id, 3, msg.sender, b.poster, proofLink);
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, b.poster, proofLink);
         emit BountySubmitted(id, msg.sender, proofLink);
     }
 
@@ -248,6 +277,8 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     function approveBounty(uint256 id) external {
         Bounty storage b = bounties[id];
         require(b.poster == msg.sender, "not your bounty");
+        require(!posterBlacklisted[msg.sender], "poster blacklisted");
+        require(!builderBlacklisted[b.builder], "builder blacklisted");
         require(b.status == Status.Submitted, "not submitted");
 
         b.status = Status.Approved;
@@ -256,23 +287,23 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         buildersCompleted[b.builder] += 1;
         _fsiSetAddr(NS_BUILDER_POINTS, b.builder, builderPoints[b.builder]);
 
-        _fsiAppend(NS_BOUNTY, id, 4, msg.sender, b.builder, "approved");
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, b.builder, "approved");
         _fsiLog(NS_ACTIVITY, id, b.builder, b.poster, POINTS_PER_BOUNTY, 0);
         emit BountyApproved(id, msg.sender, b.builder);
     }
 
-    /// @notice Anyone can call this once a bounty's deadline has passed without approval. If it
-    ///         was claimed, the builder takes a strike — automatic, since the deadline itself is
-    ///         the only referee needed here. Three strikes auto-blacklists them from being
-    ///         selected again.
+    /// @notice Anyone can call this once a bounty's deadline has passed without approval, as long
+    ///         as it's still Open or Claimed. If it was Claimed, the builder takes a strike —
+    ///         automatic, since the deadline itself is the only referee needed here. Three strikes
+    ///         auto-blacklists them from being selected again. A Submitted bounty is deliberately
+    ///         excluded: the builder already delivered on time, so a strike there would punish the
+    ///         wrong side. `approveBounty` has no deadline cutoff, so the poster keeps unlimited
+    ///         time to review and approve a Submitted bounty instead.
     function markExpired(uint256 id) external {
         Bounty storage b = bounties[id];
         require(b.poster != address(0), "no such bounty");
         require(block.timestamp >= b.deadline, "not past deadline yet");
-        require(
-            b.status == Status.Open || b.status == Status.Claimed || b.status == Status.Submitted,
-            "already finalized"
-        );
+        require(b.status == Status.Open || b.status == Status.Claimed, "already finalized");
 
         address missedBuilder = b.builder;
         b.status = Status.Expired;
@@ -285,7 +316,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
             }
         }
 
-        _fsiAppend(NS_BOUNTY, id, 5, msg.sender, missedBuilder, "expired");
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, missedBuilder, "expired");
         emit BountyExpired(id, missedBuilder);
     }
 
@@ -326,6 +357,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     }
 
     function setProfile(ProfileInput calldata input) external {
+        require(!builderBlacklisted[msg.sender] && !posterBlacklisted[msg.sender], "blacklisted");
         require(bytes(input.rate).length <= MAX_PROFILE_FIELD_LEN, "rate too long");
         require(bytes(input.skills).length <= MAX_PROFILE_FIELD_LEN, "skills too long");
         require(bytes(input.x).length <= MAX_PROFILE_FIELD_LEN, "x handle too long");
@@ -383,9 +415,10 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     function removeBounty(uint256 id) external onlyOwner {
         Bounty storage b = bounties[id];
         require(b.poster != address(0), "no such bounty");
+        require(b.status != Status.Cancelled, "already cancelled");
 
         b.status = Status.Cancelled;
-        _fsiAppend(NS_BOUNTY, id, 8, msg.sender, b.poster, "removed");
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, b.poster, "removed");
         emit BountyRemoved(id, msg.sender);
     }
 
