@@ -24,7 +24,7 @@ import {
 import { BuilderBountiesAbi } from "./VaultABI";
 
 const CHAIN_ID = 56;
-const CONTRACT_ADDRESS = "0xb8ccb170a832ea8da2b7735d612de18c11f11613" as const;
+const CONTRACT_ADDRESS = "0x6b58ee1d0a0967c9226116581d1f94007fc68fed" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
