@@ -75,7 +75,7 @@ contract BuilderBountiesTest is Test {
         bounties.approveBounty(id);
     }
 
-    uint64 constant DEFAULT_DEADLINE_OFFSET = 1 days;
+    uint64 constant DEFAULT_DEADLINE_OFFSET = 2 days;
 
     function _defaultDeadline() internal view returns (uint64) {
         return uint64(block.timestamp) + DEFAULT_DEADLINE_OFFSET;
@@ -145,6 +145,32 @@ contract BuilderBountiesTest is Test {
         vm.prank(poster);
         vm.expectRevert(bytes("deadline too soon"));
         bounties.postBounty("Too soon", "", "", "dev", uint64(block.timestamp + 1 hours));
+    }
+
+    function test_postBounty_revertsAtOldMinimumDuration() public {
+        // V1 fix: a 24h deadline (the old minimum) is no longer enough to post with — it would
+        // leave a bounty that can never actually be selected in practice (see the test below).
+        vm.prank(poster);
+        vm.expectRevert(bytes("deadline too soon"));
+        bounties.postBounty("Old minimum", "", "", "dev", uint64(block.timestamp + 24 hours));
+    }
+
+    function test_postBounty_atNewMinimumDuration_isActuallySelectable() public {
+        // V1 fix: posting at the new 48h minimum and waiting almost a full day to select still
+        // leaves enough lead time — proving a minimum-duration bounty is no longer permanently
+        // unselectable the way it was when posting and selection shared the same 24h floor.
+        uint64 deadline = uint64(block.timestamp) + 48 hours;
+        uint256 id = _postBounty(poster, deadline);
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+
+        vm.warp(block.timestamp + 23 hours);
+        vm.prank(poster);
+        bounties.selectBuilder(id, builder);
+
+        (, address bBuilder, , , , , , BuilderBounties.Status status, , ) = bounties.bounties(id);
+        assertEq(bBuilder, builder);
+        assertEq(uint8(status), uint8(BuilderBounties.Status.Claimed));
     }
 
     function test_postBounty_revertsOnDeadlineTooFarOut() public {

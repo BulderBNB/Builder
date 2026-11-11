@@ -55,7 +55,12 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     uint256 public constant MAX_REWARD_LABEL_LEN = 80;
     uint256 public constant MAX_CATEGORY_LEN = 80;
     uint256 public constant MAX_PROFILE_FIELD_LEN = 160;
-    uint256 public constant MIN_BOUNTY_DURATION = 24 hours;
+    /// @dev Kept strictly longer than MIN_SELECT_LEAD_TIME: if the two were equal, a bounty
+    ///      posted at exactly the minimum could only ever be selected in the same block it was
+    ///      posted in (any elapsed time at all would leave less than the required lead time), so
+    ///      in practice nobody could ever be selected for it.
+    uint256 public constant MIN_POST_DURATION = 48 hours;
+    uint256 public constant MIN_SELECT_LEAD_TIME = 24 hours;
     uint256 public constant MAX_BOUNTY_DURATION = 30 days;
     uint256 public constant MAX_APPLICANTS = 30;
 
@@ -159,7 +164,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         require(bytes(briefLink).length <= MAX_LINK_LEN, "brief link too long");
         require(bytes(rewardLabel).length <= MAX_REWARD_LABEL_LEN, "reward text too long");
         require(bytes(category).length <= MAX_CATEGORY_LEN, "category too long");
-        require(deadline >= block.timestamp + MIN_BOUNTY_DURATION, "deadline too soon");
+        require(deadline >= block.timestamp + MIN_POST_DURATION, "deadline too soon");
         require(deadline <= block.timestamp + MAX_BOUNTY_DURATION, "deadline too far out");
 
         id = bountyCount++;
@@ -219,17 +224,19 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     /// @notice Poster picks who gets the job, from among the addresses that applied. Requiring a
     ///         prior `applyToBounty` call means nobody can be assigned (and later struck for a
     ///         missed deadline) without having agreed to take the job themselves. Also requires at
-    ///         least MIN_BOUNTY_DURATION left before the deadline at the moment of selection —
+    ///         least MIN_SELECT_LEAD_TIME left before the deadline at the moment of selection —
     ///         without this, a poster could wait until 1 second before the deadline to select an
     ///         applicant, then immediately mark it expired: the builder technically "consented" by
-    ///         applying, but never had a real chance to act once selected. Contact details are
-    ///         exchanged off-platform from here.
+    ///         applying, but never had a real chance to act once selected. MIN_POST_DURATION is
+    ///         kept strictly longer than this so a bounty posted at its own minimum is still
+    ///         actually selectable in practice. Contact details are exchanged off-platform from
+    ///         here.
     function selectBuilder(uint256 id, address builder) external {
         Bounty storage b = bounties[id];
         require(b.poster == msg.sender, "not your bounty");
         require(!posterBlacklisted[msg.sender], "poster blacklisted");
         require(b.status == Status.Open, "not open");
-        require(b.deadline >= block.timestamp + MIN_BOUNTY_DURATION, "not enough time left to select");
+        require(b.deadline >= block.timestamp + MIN_SELECT_LEAD_TIME, "not enough time left to select");
         require(builder != address(0) && builder != msg.sender, "bad builder");
         require(!builderBlacklisted[builder], "builder blacklisted");
         require(hasApplied[id][builder], "builder must apply first");

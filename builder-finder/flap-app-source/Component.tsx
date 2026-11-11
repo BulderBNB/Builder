@@ -591,8 +591,32 @@ export default function Component() {
           functionName: "getApplicants",
           args: [BigInt(id)],
         });
-        setApplicants((prev) => ({ ...prev, [id]: list }));
-        list.forEach((addr) => {
+        // A released or rejected builder can reapply, adding a second entry for the same
+        // address; dedupe here, keeping the first-seen (checksummed) casing.
+        const seen = new Set<string>();
+        const unique: `0x${string}`[] = [];
+        for (const addr of list) {
+          const key = addr.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(addr);
+          }
+        }
+        // getApplicants is a historical list — it never drops an address once added, even after
+        // they release or get rejected, so confirm each one is still actively applied.
+        const stillApplied = await Promise.all(
+          unique.map((addr) =>
+            sdk.readContract<boolean>({
+              address: CONTRACT_ADDRESS,
+              abi: BuilderBountiesAbi,
+              functionName: "hasApplied",
+              args: [BigInt(id), addr],
+            })
+          )
+        );
+        const active = unique.filter((_, i) => stillApplied[i]);
+        setApplicants((prev) => ({ ...prev, [id]: active }));
+        active.forEach((addr) => {
           void ensureContact(addr);
           void ensureReputation(addr);
         });
