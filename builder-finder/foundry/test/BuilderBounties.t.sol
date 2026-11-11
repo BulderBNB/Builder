@@ -415,6 +415,124 @@ contract BuilderBountiesTest is Test {
         bounties.releaseBounty(id);
     }
 
+    function test_releaseBounty_revertsAfterDeadline() public {
+        // N3 fix: a builder about to miss the deadline can't self-release to dodge the strike
+        // markExpired would otherwise give them.
+        uint64 deadline = _defaultDeadline();
+        uint256 id = _selected(deadline);
+
+        vm.warp(deadline + 1);
+        vm.prank(builder);
+        vm.expectRevert(bytes("deadline passed"));
+        bounties.releaseBounty(id);
+    }
+
+    function test_selectBuilder_revertsIfNotEnoughTimeLeft() public {
+        // N1 fix: a poster can't wait until 1 second before the deadline to select an applicant
+        // and immediately strike them — selecting now requires at least MIN_BOUNTY_DURATION left.
+        uint64 deadline = _defaultDeadline();
+        uint256 id = _postBounty(poster, deadline);
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+
+        vm.warp(deadline - 1);
+        vm.prank(poster);
+        vm.expectRevert(bytes("not enough time left to select"));
+        bounties.selectBuilder(id, builder);
+    }
+
+    function test_griefViaLastSecondSelect_noLongerPossible() public {
+        // N1: the refined attack — select at the very last moment, then immediately markExpired.
+        // Even with a willing applicant, this must now fail at the selection step itself.
+        uint64 deadline = _defaultDeadline();
+        uint256 id = _postBounty(poster, deadline);
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+
+        vm.warp(deadline - 1);
+        vm.prank(poster);
+        vm.expectRevert(bytes("not enough time left to select"));
+        bounties.selectBuilder(id, builder);
+
+        assertEq(bounties.builderMissedStrikes(builder), 0);
+    }
+
+    function test_releaseBounty_clearsApplicationSoReselectionNeedsConsentAgain() public {
+        // N1 fix: a stale application from before a release can't be reused to select (and
+        // strike) the same builder again without them actively re-applying.
+        uint256 id = _postBounty(poster, _defaultDeadline());
+        vm.prank(builder);
+        bounties.applyToBounty(id);
+        vm.prank(poster);
+        bounties.selectBuilder(id, builder);
+
+        vm.prank(builder);
+        bounties.releaseBounty(id);
+
+        assertFalse(bounties.hasApplied(id, builder));
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("builder must apply first"));
+        bounties.selectBuilder(id, builder);
+    }
+
+    // ---------------------------------------------------------------------
+    // rejectProof (N2 fix)
+    // ---------------------------------------------------------------------
+
+    function test_rejectProof_reopensWithNoStrike() public {
+        uint256 id = _selected(_defaultDeadline());
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/junk-link");
+
+        vm.prank(poster);
+        bounties.rejectProof(id);
+
+        (, address bBuilder, , , , , , BuilderBounties.Status status, string memory proofLink, ) = bounties.bounties(id);
+        assertEq(bBuilder, address(0));
+        assertEq(uint8(status), uint8(BuilderBounties.Status.Open));
+        assertEq(proofLink, "");
+        assertFalse(bounties.hasApplied(id, builder));
+        assertEq(bounties.builderMissedStrikes(builder), 0);
+        assertFalse(bounties.builderBlacklisted(builder));
+    }
+
+    function test_rejectProof_allowsSelectingSomeoneElse() public {
+        uint256 id = _selected(_defaultDeadline());
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/junk-link");
+
+        vm.prank(poster);
+        bounties.rejectProof(id);
+
+        vm.prank(builder2);
+        bounties.applyToBounty(id);
+        vm.prank(poster);
+        bounties.selectBuilder(id, builder2);
+
+        (, address bBuilder, , , , , , BuilderBounties.Status status, , ) = bounties.bounties(id);
+        assertEq(bBuilder, builder2);
+        assertEq(uint8(status), uint8(BuilderBounties.Status.Claimed));
+    }
+
+    function test_rejectProof_revertsIfNotPoster() public {
+        uint256 id = _selected(_defaultDeadline());
+        vm.prank(builder);
+        bounties.submitProof(id, "https://example.com/junk-link");
+
+        vm.prank(stranger);
+        vm.expectRevert(bytes("not your bounty"));
+        bounties.rejectProof(id);
+    }
+
+    function test_rejectProof_revertsIfNotSubmitted() public {
+        uint256 id = _selected(_defaultDeadline());
+
+        vm.prank(poster);
+        vm.expectRevert(bytes("not submitted"));
+        bounties.rejectProof(id);
+    }
+
     // ---------------------------------------------------------------------
     // submitProof / approveBounty
     // ---------------------------------------------------------------------
@@ -821,6 +939,15 @@ contract BuilderBountiesTest is Test {
         bounties.removeBounty(id);
 
         vm.expectRevert(bytes("already cancelled"));
+        bounties.removeBounty(id);
+    }
+
+    function test_removeBounty_revertsIfApproved() public {
+        // N4 fix: removing an Approved bounty would silently strip the builder's only remaining
+        // avenue (reportNonPayment) for legitimate, completed work.
+        uint256 id = _approved(_defaultDeadline());
+
+        vm.expectRevert(bytes("cannot remove an approved bounty"));
         bounties.removeBounty(id);
     }
 

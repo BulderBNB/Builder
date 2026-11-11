@@ -118,6 +118,7 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     event BountyReleased(uint256 indexed id, address indexed builder);
     event BountySubmitted(uint256 indexed id, address indexed builder, string proofLink);
     event BountyApproved(uint256 indexed id, address indexed poster, address indexed builder);
+    event BountyProofRejected(uint256 indexed id, address indexed poster, address indexed builder);
     event BountyCancelled(uint256 indexed id, address indexed poster);
     event BountyRemoved(uint256 indexed id, address indexed owner);
     event BountyExpired(uint256 indexed id, address indexed builder);
@@ -217,14 +218,18 @@ contract BuilderBounties is FlapSharedIndexerV1 {
 
     /// @notice Poster picks who gets the job, from among the addresses that applied. Requiring a
     ///         prior `applyToBounty` call means nobody can be assigned (and later struck for a
-    ///         missed deadline) without having agreed to take the job themselves. Contact details
-    ///         are exchanged off-platform from here.
+    ///         missed deadline) without having agreed to take the job themselves. Also requires at
+    ///         least MIN_BOUNTY_DURATION left before the deadline at the moment of selection —
+    ///         without this, a poster could wait until 1 second before the deadline to select an
+    ///         applicant, then immediately mark it expired: the builder technically "consented" by
+    ///         applying, but never had a real chance to act once selected. Contact details are
+    ///         exchanged off-platform from here.
     function selectBuilder(uint256 id, address builder) external {
         Bounty storage b = bounties[id];
         require(b.poster == msg.sender, "not your bounty");
         require(!posterBlacklisted[msg.sender], "poster blacklisted");
         require(b.status == Status.Open, "not open");
-        require(block.timestamp < b.deadline, "deadline passed");
+        require(b.deadline >= block.timestamp + MIN_BOUNTY_DURATION, "not enough time left to select");
         require(builder != address(0) && builder != msg.sender, "bad builder");
         require(!builderBlacklisted[builder], "builder blacklisted");
         require(hasApplied[id][builder], "builder must apply first");
@@ -238,15 +243,21 @@ contract BuilderBounties is FlapSharedIndexerV1 {
     }
 
     /// @notice The selected builder can hand the bounty back if the deal falls through — no
-    ///         penalty, no strike. Reopens it for the poster to select someone else.
+    ///         penalty, no strike. Reopens it for the poster to select someone else. Only allowed
+    ///         before the deadline — otherwise a builder about to miss it could self-release to
+    ///         dodge the strike that `markExpired` would otherwise give them. Clears their
+    ///         `hasApplied` flag too, so a stale application from before this release can't be used
+    ///         to select (and strike) them again later without a fresh, deliberate re-application.
     function releaseBounty(uint256 id) external {
         Bounty storage b = bounties[id];
         require(b.builder == msg.sender, "not your claim");
         require(b.status == Status.Claimed, "not claimed");
+        require(block.timestamp < b.deadline, "deadline passed");
 
         address released = b.builder;
         b.builder = address(0);
         b.status = Status.Open;
+        hasApplied[id][released] = false;
 
         _fsiAppend(NS_BOUNTY, id, _nextSeq(id), released, b.poster, "released");
         emit BountyReleased(id, released);
@@ -290,6 +301,26 @@ contract BuilderBounties is FlapSharedIndexerV1 {
         _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, b.builder, "approved");
         _fsiLog(NS_ACTIVITY, id, b.builder, b.poster, POINTS_PER_BOUNTY, 0);
         emit BountyApproved(id, msg.sender, b.builder);
+    }
+
+    /// @notice Poster rejects submitted work instead of approving it — no strike, since a
+    ///         rejection isn't an objective, chain-verifiable fact the way a missed deadline is.
+    ///         Reopens the bounty (clearing the rejected builder's `hasApplied`, same as a release)
+    ///         so the poster can pick a different applicant instead of being stuck forever with a
+    ///         Submitted bounty they don't want to approve.
+    function rejectProof(uint256 id) external {
+        Bounty storage b = bounties[id];
+        require(b.poster == msg.sender, "not your bounty");
+        require(b.status == Status.Submitted, "not submitted");
+
+        address rejected = b.builder;
+        b.builder = address(0);
+        b.status = Status.Open;
+        b.proofLink = "";
+        hasApplied[id][rejected] = false;
+
+        _fsiAppend(NS_BOUNTY, id, _nextSeq(id), rejected, b.poster, "rejected");
+        emit BountyProofRejected(id, msg.sender, rejected);
     }
 
     /// @notice Anyone can call this once a bounty's deadline has passed without approval, as long
@@ -411,11 +442,14 @@ contract BuilderBounties is FlapSharedIndexerV1 {
 
     /// @notice Force a bounty out of circulation regardless of its current state — for fraudulent
     ///         or abusive listings. Doesn't claw back points already awarded; it only stops the
-    ///         listing from being shown as active going forward.
+    ///         listing from being shown as active going forward. Can't touch an Approved bounty:
+    ///         that would silently strip the builder's one remaining avenue (`reportNonPayment`)
+    ///         for legitimate, completed work.
     function removeBounty(uint256 id) external onlyOwner {
         Bounty storage b = bounties[id];
         require(b.poster != address(0), "no such bounty");
         require(b.status != Status.Cancelled, "already cancelled");
+        require(b.status != Status.Approved, "cannot remove an approved bounty");
 
         b.status = Status.Cancelled;
         _fsiAppend(NS_BOUNTY, id, _nextSeq(id), msg.sender, b.poster, "removed");
