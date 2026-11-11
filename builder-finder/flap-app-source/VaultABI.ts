@@ -7,6 +7,7 @@ export const BuilderBountiesAbi = parseAbi([
   "function releaseBounty(uint256 id)",
   "function submitProof(uint256 id, string proofLink)",
   "function approveBounty(uint256 id)",
+  "function rejectProof(uint256 id)",
   "function reportNonPayment(uint256 id)",
   "function cancelBounty(uint256 id)",
   "function markExpired(uint256 id)",

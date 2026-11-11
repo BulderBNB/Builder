@@ -24,7 +24,7 @@ import {
 import { BuilderBountiesAbi } from "./VaultABI";
 
 const CHAIN_ID = 56;
-const CONTRACT_ADDRESS = "0x6b58ee1d0a0967c9226116581d1f94007fc68fed" as const;
+const CONTRACT_ADDRESS = "0x03f38e3011e3feb3a4e313ede741a7dc73442d9d" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
@@ -851,13 +851,22 @@ export default function Component() {
                     ) : null}
 
                     {bounty.status === 2 && isPoster ? (
-                      <TxButton
-                        className="mt-2 w-full"
-                        idleLabel={t("actions.approve")}
-                        state={activeId === bounty.id ? txState : "idle"}
-                        onClick={() => void runWrite("approveBounty", [BigInt(bounty.id)], bounty.id, t("messages.approveSuccess"))}
-                        disabled={!canWrite || busy}
-                      />
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <TxButton
+                          idleLabel={t("actions.approve")}
+                          state={activeId === bounty.id ? txState : "idle"}
+                          onClick={() => void runWrite("approveBounty", [BigInt(bounty.id)], bounty.id, t("messages.approveSuccess"))}
+                          disabled={!canWrite || busy}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void runWrite("rejectProof", [BigInt(bounty.id)], bounty.id, t("messages.rejectSuccess"))}
+                          disabled={!canWrite || busy}
+                        >
+                          {t("actions.reject")}
+                        </Button>
+                      </div>
                     ) : null}
 
                     {bounty.status === 3 && isBuilder ? (

@@ -22,7 +22,7 @@
     {
       "id": "builder-bounties",
       "chainId": 56,
-      "address": "0x6b58ee1d0a0967c9226116581d1f94007fc68fed",
+      "address": "0x03f38e3011e3feb3a4e313ede741a7dc73442d9d",
       "allow": [
         "function postBounty(string title, string briefLink, string rewardLabel, string category, uint64 deadline) returns (uint256 id)",
         "function applyToBounty(uint256 id)",
@@ -30,6 +30,7 @@
         "function releaseBounty(uint256 id)",
         "function submitProof(uint256 id, string proofLink)",
         "function approveBounty(uint256 id)",
+        "function rejectProof(uint256 id)",
         "function reportNonPayment(uint256 id)",
         "function cancelBounty(uint256 id)",
         "function markExpired(uint256 id)",
