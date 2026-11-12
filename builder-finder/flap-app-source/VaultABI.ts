@@ -13,7 +13,7 @@ export const BuilderBountiesAbi = parseAbi([
   "function markExpired(uint256 id)",
   "function setProfile((bool available, string rate, string skills, string x, string tg, string github, string portfolio) input)",
   "function bountyCount() view returns (uint256)",
-  "function bounties(uint256) view returns (address poster, address builder, string title, string briefLink, string rewardLabel, string category, uint64 deadline, uint8 status, string proofLink, bool nonPaymentReported)",
+  "function bounties(uint256) view returns (address poster, address builder, string title, string briefLink, string rewardLabel, string category, uint64 deadline, uint64 submittedAt, uint8 status, string proofLink, bool nonPaymentReported)",
   "function getApplicants(uint256 id) view returns (address[])",
   "function hasApplied(uint256, address) view returns (bool)",
   "function builderPoints(address) view returns (uint256)",

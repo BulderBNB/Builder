@@ -22,7 +22,7 @@
     {
       "id": "builder-bounties",
       "chainId": 56,
-      "address": "0x03f38e3011e3feb3a4e313ede741a7dc73442d9d",
+      "address": "0xa07c71d15b71c4575db9ce58a01c883b2ee8dd82",
       "allow": [
         "function postBounty(string title, string briefLink, string rewardLabel, string category, uint64 deadline) returns (uint256 id)",
         "function applyToBounty(uint256 id)",
@@ -38,7 +38,7 @@
       ],
       "read": [
         "function bountyCount() view returns (uint256)",
-        "function bounties(uint256) view returns (address poster, address builder, string title, string briefLink, string rewardLabel, string category, uint64 deadline, uint8 status, string proofLink, bool nonPaymentReported)",
+        "function bounties(uint256) view returns (address poster, address builder, string title, string briefLink, string rewardLabel, string category, uint64 deadline, uint64 submittedAt, uint8 status, string proofLink, bool nonPaymentReported)",
         "function getApplicants(uint256 id) view returns (address[])",
         "function hasApplied(uint256, address) view returns (bool)",
         "function builderPoints(address) view returns (uint256)",

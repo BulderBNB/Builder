@@ -24,7 +24,7 @@ import {
 import { BuilderBountiesAbi } from "./VaultABI";
 
 const CHAIN_ID = 56;
-const CONTRACT_ADDRESS = "0x03f38e3011e3feb3a4e313ede741a7dc73442d9d" as const;
+const CONTRACT_ADDRESS = "0xa07c71d15b71c4575db9ce58a01c883b2ee8dd82" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
@@ -41,6 +41,7 @@ type BountyTuple = readonly [
   rewardLabel: string,
   category: string,
   deadline: bigint,
+  submittedAt: bigint,
   status: number,
   proofLink: string,
   nonPaymentReported: boolean,
@@ -55,6 +56,7 @@ interface Bounty {
   rewardLabel: string;
   category: string;
   deadline: number;
+  submittedAt: number;
   status: Status;
   proofLink: string;
   nonPaymentReported: boolean;
@@ -80,9 +82,10 @@ function toBounty(id: number, tuple: BountyTuple): Bounty {
     rewardLabel: tuple[4],
     category: tuple[5],
     deadline: Number(tuple[6]),
-    status: tuple[7] as Status,
-    proofLink: tuple[8],
-    nonPaymentReported: tuple[9],
+    submittedAt: Number(tuple[7]),
+    status: tuple[8] as Status,
+    proofLink: tuple[9],
+    nonPaymentReported: tuple[10],
   };
 }
 
