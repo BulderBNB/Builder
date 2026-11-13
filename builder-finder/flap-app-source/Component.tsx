@@ -1000,10 +1000,12 @@ export default function Component() {
               <label className="block space-y-2">
                 <span className="text-sm text-white/56">{t("labels.briefLink")}</span>
                 <Input value={postBrief} placeholder={t("placeholders.briefLink")} onChange={(event) => setPostBrief(event.target.value)} />
+                <p className="text-xs text-white/42">{t("states.briefLinkCanChange")}</p>
               </label>
               <label className="block space-y-2">
                 <span className="text-sm text-white/56">{t("labels.reward")}</span>
                 <Input value={postReward} placeholder={t("placeholders.reward")} onChange={(event) => setPostReward(event.target.value)} />
+                <p className="text-xs text-white/42">{t("states.rewardIsPromise")}</p>
               </label>
               <div className="space-y-2">
                 <span className="text-sm text-white/56">{t("labels.category")}</span>
@@ -1060,6 +1062,7 @@ export default function Component() {
                     <span className="text-sm text-white/56">{t("labels.skills")}</span>
                     <Input value={profileSkills} placeholder={t("placeholders.skills")} onChange={(event) => setProfileSkills(event.target.value)} />
                   </label>
+                  <p className="text-xs text-white/42">{t("states.handlesUnverified")}</p>
                   <label className="block space-y-2">
                     <span className="text-sm text-white/56">{t("labels.x")}</span>
                     <Input value={profileX} placeholder={t("placeholders.x")} onChange={(event) => setProfileX(event.target.value)} />
