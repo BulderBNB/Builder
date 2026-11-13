@@ -15,7 +15,6 @@ import {
   DataRow,
   ExternalLink,
   Input,
-  IpfsImage,
   Metric,
   StatusBadge,
   TxButton,
@@ -28,7 +27,6 @@ const CONTRACT_ADDRESS = "0xa07c71d15b71c4575db9ce58a01c883b2ee8dd82" as const;
 const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
-const LOGO_CID = "bafkreiejjzu5jygio3cefp535cd2licev5hqjm2ayi3psnawuc4di6ywb4";
 
 const MAX_BOUNTY_DURATION_SECONDS = 30 * 24 * 3600;
 
@@ -642,7 +640,6 @@ export default function Component() {
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              {LOGO_CID ? <IpfsImage cid={LOGO_CID} alt="Builder Finder" className="h-16 w-16 flex-shrink-0 rounded-full object-cover" /> : null}
               <div className="min-w-0">
                 <CardTitle>{t("app.title")}</CardTitle>
                 <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-white/60">{t("app.subtitle")}</p>
