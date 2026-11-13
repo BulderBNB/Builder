@@ -29,6 +29,9 @@ const IS_LIVE = CONTRACT_ADDRESS !== ZERO_ADDRESS;
 const OFFICIAL_X_URL = "https://x.com/thebnbmascot";
 
 const MAX_BOUNTY_DURATION_SECONDS = 30 * 24 * 3600;
+const PAGE_SIZE = 25;
+const REVIEW_TIMEOUT_SECONDS = 14 * 24 * 3600;
+const MIN_SELECT_LEAD_TIME_SECONDS = 24 * 3600;
 
 type Status = 0 | 1 | 2 | 3 | 4 | 5;
 type BountyTuple = readonly [
@@ -185,6 +188,7 @@ export default function Component() {
   const [proofDraftId, setProofDraftId] = useState<number | null>(null);
   const [proofDraft, setProofDraft] = useState("");
   const [applicants, setApplicants] = useState<Record<number, `0x${string}`[]>>({});
+  const [myApplied, setMyApplied] = useState<Record<number, boolean>>({});
   const [applicantsOpenId, setApplicantsOpenId] = useState<number | null>(null);
   const [expandedBountyId, setExpandedBountyId] = useState<number | null>(null);
   const [expandedBuilderKey, setExpandedBuilderKey] = useState<string | null>(null);
@@ -195,6 +199,10 @@ export default function Component() {
   const [posterReports, setPosterReports] = useState<Record<string, bigint>>({});
   const [reputations, setReputations] = useState<Record<string, { points: bigint; completed: bigint; strikes: bigint; blacklisted: boolean }>>({});
   const [categoryFilter, setCategoryFilter] = useState<"All" | (typeof CATEGORIES)[number]>("All");
+  const [bountyLimit, setBountyLimit] = useState(PAGE_SIZE);
+  const [bountyTotal, setBountyTotal] = useState(0);
+  const [builderLimit, setBuilderLimit] = useState(PAGE_SIZE);
+  const [builderTotal, setBuilderTotal] = useState(0);
   const fetchedContactsRef = useRef<Set<string>>(new Set());
   const fetchedReportsRef = useRef<Set<string>>(new Set());
   const fetchedReputationRef = useRef<Set<string>>(new Set());
@@ -258,7 +266,8 @@ export default function Component() {
         functionName: "bountyCount",
       });
       const total = Number(count);
-      const ids = Array.from({ length: total }, (_, index) => total - 1 - index).slice(0, 25);
+      setBountyTotal(total);
+      const ids = Array.from({ length: total }, (_, index) => total - 1 - index).slice(0, bountyLimit);
       const rows = await Promise.all(
         ids.map(async (id) => {
           const tuple = await sdk.readContract<BountyTuple>({
@@ -283,12 +292,28 @@ export default function Component() {
       rows.forEach((b) => {
         if (b.builder !== ZERO_ADDRESS) void ensureReputation(b.builder);
       });
+      if (wallet.address) {
+        const openRows = rows.filter((b) => b.status === 0);
+        const mine = wallet.address;
+        const applied = await Promise.all(
+          openRows.map((b) =>
+            sdk.readContract<boolean>({ address: CONTRACT_ADDRESS, abi: BuilderBountiesAbi, functionName: "hasApplied", args: [BigInt(b.id), mine] }),
+          ),
+        );
+        setMyApplied((prev) => {
+          const next = { ...prev };
+          openRows.forEach((b, i) => {
+            next[b.id] = applied[i];
+          });
+          return next;
+        });
+      }
     } catch (nextError) {
       setError(handleTxError(nextError, txErrorMessages));
     } finally {
       setLoading(false);
     }
-  }, [sdk, txErrorMessages]);
+  }, [sdk, txErrorMessages, wallet.address, bountyLimit]);
 
   /** Fetches and caches an address's X/Telegram handles once — same address across many
    *  bounties costs one read, not one per appearance. */
@@ -366,7 +391,8 @@ export default function Component() {
         functionName: "registeredBuilderCount",
       });
       const total = Number(count);
-      const indexes = Array.from({ length: total }, (_, index) => total - 1 - index).slice(0, 25);
+      setBuilderTotal(total);
+      const indexes = Array.from({ length: total }, (_, index) => total - 1 - index).slice(0, builderLimit);
       const addresses = await Promise.all(
         indexes.map((index) =>
           sdk.readContract<`0x${string}`>({
@@ -388,7 +414,7 @@ export default function Component() {
     } finally {
       setBuildersLoading(false);
     }
-  }, [sdk, txErrorMessages]);
+  }, [sdk, txErrorMessages, builderLimit]);
 
   /** The rest of a builder's listing beyond X/TG (already cached by ensureContact) and
    *  points/completed/strikes (already cached by ensureReputation) — kept separate since this
@@ -455,7 +481,7 @@ export default function Component() {
   }, [tab, loadProfile]);
 
   useEffect(() => {
-    if (tab === "browse" && browseView === "builders" && builders.length === 0) void loadBuilders();
+    if (tab === "browse" && browseView === "builders") void loadBuilders();
   }, [tab, browseView, loadBuilders]);
 
   useEffect(() => {
@@ -634,6 +660,13 @@ export default function Component() {
     setApplicantsOpenId(null);
   }
 
+  async function removeApplicant(id: number, applicant: `0x${string}`) {
+    const ok = await runWrite("removeApplicant", [BigInt(id), applicant], id, t("messages.removeApplicantSuccess"));
+    if (ok) {
+      setApplicants((prev) => ({ ...prev, [id]: (prev[id] ?? []).filter((addr) => addr.toLowerCase() !== applicant.toLowerCase()) }));
+    }
+  }
+
   return (
     <div className="min-h-screen w-full space-y-4 p-4 sm:p-6">
       <Card>
@@ -739,6 +772,11 @@ export default function Component() {
                 const busy = activeId === bounty.id && txState !== "idle" && txState !== "failed";
                 const applicantList = applicants[bounty.id] ?? [];
                 const isExpanded = expandedBountyId === bounty.id;
+                const nowUnix = Math.floor(Date.now() / 1000);
+                const claimableAtUnix = bounty.submittedAt + REVIEW_TIMEOUT_SECONDS;
+                const canClaimAbandoned = nowUnix >= claimableAtUnix;
+                const hasSelectLeadTime = bounty.deadline - nowUnix >= MIN_SELECT_LEAD_TIME_SECONDS;
+                const deadlinePassed = nowUnix >= bounty.deadline;
                 return (
                   <div key={bounty.id} className="rounded-[14px] border border-white/10 bg-black/25 p-3">
                     <div className="cursor-pointer" onClick={() => setExpandedBountyId(isExpanded ? null : bounty.id)}>
@@ -777,18 +815,39 @@ export default function Component() {
                           pointsLabel={t("labels.points")}
                           completedLabel={t("labels.completedCount")}
                           strikesLabel={t("labels.strikes")}
-                          blacklistedLabel={t("status.cancelled")}
+                          blacklistedLabel={t("status.blacklisted")}
                         />
                         <ContactLinks contact={contacts[bounty.builder.toLowerCase()]} xLabel={t("labels.x")} tgLabel={t("labels.telegram")} />
                       </>
                     ) : null}
                     {bounty.status >= 2 ? <LinkOrText value={bounty.proofLink} label={t("labels.proof")} /> : null}
 
+                    {(bounty.status === 0 || bounty.status === 1) && deadlinePassed ? (
+                      <TxButton
+                        className="mt-2 w-full"
+                        idleLabel={t("actions.markExpired")}
+                        state={activeId === bounty.id ? txState : "idle"}
+                        onClick={() => void runWrite("markExpired", [BigInt(bounty.id)], bounty.id, t("messages.markExpiredSuccess"))}
+                        disabled={!canWrite || busy}
+                      />
+                    ) : null}
+
                     {bounty.status === 0 && isPoster ? (
                       <div className="mt-2 space-y-2">
-                        <Button className="w-full" size="sm" variant="outline" onClick={() => void toggleApplicants(bounty.id)}>
-                          {t("actions.viewApplicants")}
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button size="sm" variant="outline" onClick={() => void toggleApplicants(bounty.id)}>
+                            {t("actions.viewApplicants")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void runWrite("cancelBounty", [BigInt(bounty.id)], bounty.id, t("messages.cancelSuccess"))}
+                            disabled={!canWrite || busy}
+                          >
+                            {t("actions.cancel")}
+                          </Button>
+                        </div>
+                        {!hasSelectLeadTime && !deadlinePassed ? <p className="text-xs text-white/42">{t("states.tooCloseToSelect")}</p> : null}
                         {applicantsOpenId === bounty.id ? (
                           <div className="space-y-1.5 rounded-[10px] border border-white/10 bg-black/30 p-2">
                             {applicantsLoading ? <div className="text-xs text-white/56">{t("states.loading")}</div> : null}
@@ -799,9 +858,14 @@ export default function Component() {
                                 <div key={applicant} className="space-y-1 border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <AddressLink address={applicant} explorerBaseUrl={context.explorerBaseUrl} />
-                                    <Button size="sm" onClick={() => void selectApplicant(bounty.id, applicant)} disabled={!canWrite || busy}>
-                                      {t("actions.select")}
-                                    </Button>
+                                    <div className="flex gap-1.5">
+                                      <Button size="sm" variant="outline" onClick={() => void removeApplicant(bounty.id, applicant)} disabled={!canWrite || busy}>
+                                        {t("actions.removeApplicant")}
+                                      </Button>
+                                      <Button size="sm" onClick={() => void selectApplicant(bounty.id, applicant)} disabled={!canWrite || busy || !hasSelectLeadTime}>
+                                        {t("actions.select")}
+                                      </Button>
+                                    </div>
                                   </div>
                                   {c?.x ? (
                                     <div className="text-xs">
@@ -818,7 +882,7 @@ export default function Component() {
                                     pointsLabel={t("labels.points")}
                                     completedLabel={t("labels.completedCount")}
                                     strikesLabel={t("labels.strikes")}
-                                    blacklistedLabel={t("status.cancelled")}
+                                    blacklistedLabel={t("status.blacklisted")}
                                   />
                                 </div>
                               );
@@ -829,24 +893,36 @@ export default function Component() {
                     ) : null}
 
                     {bounty.status === 0 && !isPoster ? (
-                      <TxButton
-                        className="mt-2 w-full"
-                        idleLabel={t("actions.apply")}
-                        state={activeId === bounty.id ? txState : "idle"}
-                        onClick={() => {
-                          if (!myHasContact) {
-                            setError(t("errors.contactRequired"));
-                            return;
-                          }
-                          void runWrite("applyToBounty", [BigInt(bounty.id)], bounty.id, t("messages.applySuccess"));
-                        }}
-                        disabled={!canWrite || busy}
-                      />
+                      myApplied[bounty.id] ? (
+                        <TxButton
+                          className="mt-2 w-full"
+                          idleLabel={t("actions.withdraw")}
+                          state={activeId === bounty.id ? txState : "idle"}
+                          onClick={() => void runWrite("withdrawApplication", [BigInt(bounty.id)], bounty.id, t("messages.withdrawSuccess"))}
+                          disabled={!canWrite || busy}
+                        />
+                      ) : !deadlinePassed ? (
+                        <TxButton
+                          className="mt-2 w-full"
+                          idleLabel={t("actions.apply")}
+                          state={activeId === bounty.id ? txState : "idle"}
+                          onClick={() => {
+                            if (!myHasContact) {
+                              setError(t("errors.contactRequired"));
+                              return;
+                            }
+                            void runWrite("applyToBounty", [BigInt(bounty.id)], bounty.id, t("messages.applySuccess"));
+                          }}
+                          disabled={!canWrite || busy}
+                        />
+                      ) : null
                     ) : null}
 
                     {bounty.status === 1 && isBuilder ? (
                       <div className="mt-2 space-y-2">
-                        {proofDraftId === bounty.id ? (
+                        {deadlinePassed ? (
+                          <p className="text-xs text-white/42">{t("states.submitDeadlinePassed")}</p>
+                        ) : proofDraftId === bounty.id ? (
                           <div className="space-y-2">
                             <Input value={proofDraft} placeholder={t("placeholders.proofLink")} onChange={(event) => setProofDraft(event.target.value)} />
                             <TxButton
@@ -867,10 +943,11 @@ export default function Component() {
                           size="sm"
                           variant="outline"
                           onClick={() => void runWrite("releaseBounty", [BigInt(bounty.id)], bounty.id, t("messages.releaseSuccess"))}
-                          disabled={!canWrite || busy}
+                          disabled={!canWrite || busy || !hasSelectLeadTime}
                         >
                           {t("actions.release")}
                         </Button>
+                        {!hasSelectLeadTime && !deadlinePassed ? <p className="text-xs text-white/42">{t("states.tooCloseToRelease")}</p> : null}
                       </div>
                     ) : null}
 
@@ -891,6 +968,20 @@ export default function Component() {
                           {t("actions.reject")}
                         </Button>
                       </div>
+                    ) : bounty.status === 2 && isBuilder ? (
+                      canClaimAbandoned ? (
+                        <TxButton
+                          className="mt-2 w-full"
+                          idleLabel={t("actions.claimAbandoned")}
+                          state={activeId === bounty.id ? txState : "idle"}
+                          onClick={() => void runWrite("claimAbandonedSubmission", [BigInt(bounty.id)], bounty.id, t("messages.claimAbandonedSuccess"))}
+                          disabled={!canWrite || busy}
+                        />
+                      ) : (
+                        <p className="mt-2 text-xs text-white/42">
+                          {t("states.reviewWindowOpen")} <Countdown targetTimeMs={claimableAtUnix * 1000} fallback="" />
+                        </p>
+                      )
                     ) : null}
 
                     {bounty.status === 3 && isBuilder ? (
@@ -914,6 +1005,11 @@ export default function Component() {
                 );
               })}
                   </div>
+                  {bountyLimit < bountyTotal ? (
+                    <Button className="w-full" size="sm" variant="outline" onClick={() => setBountyLimit((limit) => limit + PAGE_SIZE)}>
+                      {t("actions.loadMore")}
+                    </Button>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -953,7 +1049,7 @@ export default function Component() {
                               pointsLabel={t("labels.points")}
                               completedLabel={t("labels.completedCount")}
                               strikesLabel={t("labels.strikes")}
-                              blacklistedLabel={t("status.cancelled")}
+                              blacklistedLabel={t("status.blacklisted")}
                             />
                           </div>
                           {!isExpanded ? null : (
@@ -973,6 +1069,11 @@ export default function Component() {
                       </div>
                     );
                   })()}
+                  {builderLimit < builderTotal ? (
+                    <Button className="w-full" size="sm" variant="outline" onClick={() => setBuilderLimit((limit) => limit + PAGE_SIZE)}>
+                      {t("actions.loadMore")}
+                    </Button>
+                  ) : null}
                 </>
               )}
             </div>
@@ -1038,7 +1139,7 @@ export default function Component() {
                     <Metric label={t("labels.points")} value={String(profile?.points ?? 0n)} tone="primary" />
                     <Metric label={t("labels.completedCount")} value={String(profile?.completed ?? 0n)} tone="success" />
                     <Metric label={t("labels.strikes")} value={String(profile?.strikes ?? 0n)} tone={profile?.strikes ? "warning" : "default"} />
-                    <Metric label={t("labels.status")} value={profile?.blacklisted ? t("status.cancelled") : "OK"} tone={profile?.blacklisted ? "warning" : "success"} />
+                    <Metric label={t("labels.status")} value={profile?.blacklisted ? t("status.blacklisted") : t("status.ok")} tone={profile?.blacklisted ? "warning" : "success"} />
                   </div>
                   <p className="text-xs text-white/42">{t("states.pointsUnverified")}</p>
 

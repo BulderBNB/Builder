@@ -34,7 +34,10 @@
         "function reportNonPayment(uint256 id)",
         "function cancelBounty(uint256 id)",
         "function markExpired(uint256 id)",
-        "function setProfile((bool available, string rate, string skills, string x, string tg, string github, string portfolio) input)"
+        "function setProfile((bool available, string rate, string skills, string x, string tg, string github, string portfolio) input)",
+        "function claimAbandonedSubmission(uint256 id)",
+        "function withdrawApplication(uint256 id)",
+        "function removeApplicant(uint256 id, address who)"
       ],
       "read": [
         "function bountyCount() view returns (uint256)",
