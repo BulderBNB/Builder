@@ -63,6 +63,6 @@
     }
   ],
   "endpoints": [
-    { "host": "fsi.taxed.fun" }
+    "https://fsi.taxed.fun/fsi/v1"
   ]
 }
