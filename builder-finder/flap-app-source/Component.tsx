@@ -378,8 +378,11 @@ export default function Component() {
       if (fetchedPosterHistoryRef.current.has(key)) return;
       fetchedPosterHistoryRef.current.add(key);
       try {
-        const approvedRows: unknown[] = await sdk.readFsi({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", actor: address });
-        const rejectedRows: unknown[] = await sdk.readFsi({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", related: address });
+        const fsiPath = `${CONTRACT_ADDRESS}/L/bounty`;
+        const approvedResponse = await sdk.readFsi(fsiPath, { actor: address, limit: "1000" });
+        const rejectedResponse = await sdk.readFsi(fsiPath, { related: address, limit: "1000" });
+        const approvedRows: unknown[] = (approvedResponse as { items?: unknown[] }).items ?? [];
+        const rejectedRows: unknown[] = (rejectedResponse as { items?: unknown[] }).items ?? [];
         const fieldKey = "data";
         const approved = approvedRows.filter((row) => (row as Record<string, unknown>)[fieldKey] === "approved").length;
         const rejected = rejectedRows.filter((row) => String((row as Record<string, unknown>)[fieldKey] ?? "").startsWith("rejected")).length;
