@@ -49,8 +49,6 @@ type BountyTuple = readonly [
   nonPaymentReported: boolean,
 ];
 
-type FsiBountyRow = { data: string };
-
 interface Bounty {
   id: number;
   poster: `0x${string}`;
@@ -380,10 +378,11 @@ export default function Component() {
       if (fetchedPosterHistoryRef.current.has(key)) return;
       fetchedPosterHistoryRef.current.add(key);
       try {
-        const approvedRows = await sdk.readFsi<FsiBountyRow>({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", actor: address });
-        const rejectedRows = await sdk.readFsi<FsiBountyRow>({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", related: address });
-        const approved = approvedRows.filter((row) => row.data === "approved").length;
-        const rejected = rejectedRows.filter((row) => row.data.startsWith("rejected")).length;
+        const approvedRows: unknown[] = await sdk.readFsi({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", actor: address });
+        const rejectedRows: unknown[] = await sdk.readFsi({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", related: address });
+        const fieldKey = "data";
+        const approved = approvedRows.filter((row) => (row as Record<string, unknown>)[fieldKey] === "approved").length;
+        const rejected = rejectedRows.filter((row) => String((row as Record<string, unknown>)[fieldKey] ?? "").startsWith("rejected")).length;
         setPosterHistory((prev) => ({ ...prev, [key]: { approved, rejected } }));
       } catch {
         setPosterHistory((prev) => ({ ...prev, [key]: "unavailable" }));
