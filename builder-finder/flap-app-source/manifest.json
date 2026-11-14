@@ -61,5 +61,8 @@
         "function registeredBuilderAt(uint256 index) view returns (address)"
       ]
     }
+  ],
+  "endpoints": [
+    { "host": "fsi.taxed.fun" }
   ]
 }

@@ -202,6 +202,7 @@ export default function Component() {
   // appearing on multiple bounties only costs one read each.
   const [contacts, setContacts] = useState<Record<string, { x: string; tg: string }>>({});
   const [posterReports, setPosterReports] = useState<Record<string, bigint>>({});
+  const [posterHistory, setPosterHistory] = useState<Record<string, { approved: number; rejected: number } | "unavailable">>({});
   const [reputations, setReputations] = useState<Record<string, { points: bigint; completed: bigint; strikes: bigint; blacklisted: boolean }>>({});
   const [categoryFilter, setCategoryFilter] = useState<"All" | (typeof CATEGORIES)[number]>("All");
   const [bountyLimit, setBountyLimit] = useState(PAGE_SIZE);
@@ -213,6 +214,7 @@ export default function Component() {
   const [rejectConfirmId, setRejectConfirmId] = useState<number | null>(null);
   const fetchedContactsRef = useRef<Set<string>>(new Set());
   const fetchedReportsRef = useRef<Set<string>>(new Set());
+  const fetchedPosterHistoryRef = useRef<Set<string>>(new Set());
   const fetchedReputationRef = useRef<Set<string>>(new Set());
 
   const [builders, setBuilders] = useState<`0x${string}`[]>([]);
@@ -296,6 +298,7 @@ export default function Component() {
       addresses.forEach((addr) => {
         void ensureContact(addr);
         void ensurePosterReports(addr);
+        void ensurePosterHistory(addr);
       });
       rows.forEach((b) => {
         if (b.builder !== ZERO_ADDRESS) void ensureReputation(b.builder);
@@ -359,6 +362,31 @@ export default function Component() {
         setPosterReports((prev) => ({ ...prev, [key]: count }));
       } catch {
         fetchedReportsRef.current.delete(key);
+      }
+    },
+    [sdk],
+  );
+
+  /** A poster's approved/rejected counts, read from FSI (ns="bounty", Template L) since the
+   *  contract itself keeps no counter — approvals are rows where actor is the poster and data is
+   *  "approved"; rejections are rows where related is the poster and data starts with "rejected".
+   *  Shows "unavailable" rather than a false "0" if the FSI read fails — a missing record must
+   *  never look like a clean one. */
+  const ensurePosterHistory = useCallback(
+    async (address: `0x${string}`) => {
+      const key = address.toLowerCase();
+      if (fetchedPosterHistoryRef.current.has(key)) return;
+      fetchedPosterHistoryRef.current.add(key);
+      try {
+        const [approvedRows, rejectedRows] = await Promise.all([
+          sdk.readFsi<{ data: string }>({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", actor: address }),
+          sdk.readFsi<{ data: string }>({ emitter: CONTRACT_ADDRESS, template: "L", ns: "bounty", related: address }),
+        ]);
+        const approved = approvedRows.filter((row) => row.data === "approved").length;
+        const rejected = rejectedRows.filter((row) => row.data.startsWith("rejected")).length;
+        setPosterHistory((prev) => ({ ...prev, [key]: { approved, rejected } }));
+      } catch {
+        setPosterHistory((prev) => ({ ...prev, [key]: "unavailable" }));
       }
     },
     [sdk],
@@ -831,6 +859,18 @@ export default function Component() {
                         label={t("labels.nonPaymentReports")}
                         value={<StatusBadge tone="danger">{posterReports[bounty.poster.toLowerCase()]!.toString()}</StatusBadge>}
                       />
+                    ) : null}
+                    {posterHistory[bounty.poster.toLowerCase()] === "unavailable" ? (
+                      <p className="text-xs text-white/42">{t("states.posterHistoryUnavailable")}</p>
+                    ) : posterHistory[bounty.poster.toLowerCase()] ? (
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/56">
+                        <span>
+                          {t("labels.approved")} {(posterHistory[bounty.poster.toLowerCase()] as { approved: number; rejected: number }).approved}
+                        </span>
+                        <span>
+                          {t("labels.rejected")} {(posterHistory[bounty.poster.toLowerCase()] as { approved: number; rejected: number }).rejected}
+                        </span>
+                      </div>
                     ) : null}
                     {bounty.builder !== ZERO_ADDRESS ? (
                       <>
